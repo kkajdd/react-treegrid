@@ -57,9 +57,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	/** @jsx React.DOM */'use strict';
 
 	var React    = __webpack_require__(1)
-	var DataGrid = __webpack_require__(5)
+	var DataGrid = __webpack_require__(6)
 	var assign   = __webpack_require__(4)
-	var prefixer = __webpack_require__(6)
+	var prefixer = __webpack_require__(5)
 
 	var buildData = __webpack_require__(2)
 	var renderExpandTool = __webpack_require__(3)
@@ -143,12 +143,22 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	        assign(props, thisProps)
 
+	        props.className = this.prepareClassName(props)
 	        props.data = this.prepareData(props)
 
 	        props.treeColumn  = this.prepareTreeColumn(props)
 	        props.cellFactory = this.cellFactory.bind(this, props)
 
 	        return props
+	    },
+
+	    prepareClassName: function(props) {
+
+	        var className = props.className || ''
+
+	        className += ' react-treegrid'
+
+	        return className
 	    },
 
 	    cellFactory: function(props, cellProps) {
@@ -349,7 +359,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	/** @jsx React.DOM */'use strict';
 
-	var prefixer = __webpack_require__(6)
+	var prefixer = __webpack_require__(5)
 	var assign   = __webpack_require__(4)
 
 	/**
@@ -457,12 +467,93 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 5 */
 /***/ function(module, exports, __webpack_require__) {
 
+	/* WEBPACK VAR INJECTION */(function(global) {'use strict';
+
+	var el;
+
+	if(!!global.document){
+	  el = global.document.createElement('div');
+	}
+
+	var prefixes = ["ms", "Moz", "Webkit", "O"];
+	var properties = [
+	  'transform',
+	  'transition',
+	  'transformOrigin',
+	  'transformStyle',
+	  'transitionProperty',
+	  'transitionDuration',
+	  'transitionTimingFunction',
+	  'transitionDelay',
+	  'borderImage',
+	  'borderImageSlice',
+	  'boxShadow',
+	  'backgroundClip',
+	  'backfaceVisibility',
+	  'perspective',
+	  'perspectiveOrigin',
+	  'animation',
+	  'animationDuration',
+	  'animationName',
+	  'animationDelay',
+	  'animationDirection',
+	  'animationIterationCount',
+	  'animationTimingFunction',
+	  'animationPlayState',
+	  'animationFillMode',
+	  'appearance'
+	];
+
+	function GetVendorPrefix(property) {
+	  if(properties.indexOf(property) == -1 || !global.document || typeof el.style[property] !== 'undefined'){
+	    return property;
+	  }
+
+	  property = property[0].toUpperCase() + property.slice(1);
+	  var temp;
+
+	  for(var i = 0; i < prefixes.length; i++){
+	    temp = prefixes[i] + property;
+	    if(typeof el.style[temp] !== 'undefined'){
+	      prefixes = [prefixes[i]]; // we only need to check this one prefix from now on.
+	      return temp;
+	    }
+	  }
+	  return property[0].toLowerCase() + property.slice(1);
+	}
+
+
+	module.exports = (function(){
+	  var cache = {};
+	  return function(obj){
+	    if(!global.document){
+	      return obj;
+	    }
+
+	    var result = {};
+
+	    for(var key in obj){
+	      if(cache[key] === undefined){
+	        cache[key] = GetVendorPrefix(key);  
+	      }
+	      result[cache[key]] = obj[key];
+	    }
+
+	    return result;
+	  };
+	})();
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
+
+/***/ },
+/* 6 */
+/***/ function(module, exports, __webpack_require__) {
+
 	/** @jsx React.DOM */'use strict';
 
 	var React    = __webpack_require__(1)
 	var assign   = __webpack_require__(17)
-	var LoadMask = __webpack_require__(18)
-	var Region   = __webpack_require__(19)
+	var LoadMask = __webpack_require__(19)
+	var Region   = __webpack_require__(18)
 
 	var Column = __webpack_require__(9)
 
@@ -504,13 +595,18 @@ return /******/ (function(modules) { // webpackBootstrap
 	        loading          : React.PropTypes.bool,
 	        virtualRendering : React.PropTypes.bool,
 
-	        //specify false if you don't any column to be resizable
+	        //specify false if you don't want any column to be resizable
 	        resizableColumns : React.PropTypes.bool,
 	        filterableColumns: React.PropTypes.bool,
+
+	        //specify false if you don't want column menus to be displayed
 	        withColumnMenu   : React.PropTypes.bool,
 	        cellEllipsis     : React.PropTypes.bool,
 	        sortable         : React.PropTypes.bool,
 	        idProperty       : React.PropTypes.string.isRequired,
+
+	        //you can customize the column menu by specifying a factory
+	        columnMenuFactory: React.PropTypes.func,
 
 	        /**
 	         * @cfg {Number/String} columnMinWidth=50
@@ -605,9 +701,9 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	    toggleColumn: function(props, column){
 
-	        column = findColumn(this.props.columns, column)
+	        var visible = column.visible
 
-	        var visible = !column.hidden
+	        column = findColumn(this.props.columns, column)
 
 	        if (visible && getVisibleCount(props.columns) === 1){
 	            return
@@ -616,18 +712,23 @@ return /******/ (function(modules) { // webpackBootstrap
 	        var onHide  = this.props.onColumnHide || emptyFn
 	        var onShow  = this.props.onColumnShow || emptyFn
 
-	        if (visible){
-	            onHide(column)
-	        } else {
+	        visible?
+	            onHide(column):
 	            onShow(column)
-	        }
 
 	        var onChange = this.props.onColumnVisibilityChange || emptyFn
 
 	        onChange(column, !visible)
+
+	        if (column.defaultVisible != null){
+	            //stateful behaviour
+	            column.defaultVisible = !visible
+	            this.setState({})
+	        }
 	    },
 
 	    showColumnMenu: function(menu, column, menuOffset, event){
+
 	        this.setState({
 	            menu: menu,
 	            menuColumn: column,
@@ -661,7 +762,8 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	            toggleColumn     : this.toggleColumn.bind(this, props),
 	            showColumnMenu   : this.showColumnMenu,
-	            menuColumn       : state.menuColumn
+	            menuColumn       : state.menuColumn,
+	            columnMenuFactory: props.columnMenuFactory
 
 	        })
 	    },
@@ -904,11 +1006,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	    onColumnResizeDrop: function(config, resizeInfo){
 
-	        this.setState(config)
+	        var props   = this.props
+	        var columns = props.columns
 
-	        var columns = this.props.columns
-
-	        var onColumnResize = this.props.onColumnResize || emptyFn
+	        var onColumnResize = props.onColumnResize || emptyFn
 	        var first = resizeInfo[0]
 
 	        var firstCol  = findColumn(columns, first.name)
@@ -918,90 +1019,20 @@ return /******/ (function(modules) { // webpackBootstrap
 	        var secondCol = second? findColumn(columns, second.name): undefined
 	        var secondSize = second? second.size: undefined
 
+	        //if defaultWidth specified, update it
+	        if (firstCol.width == null && firstCol.defaultWidth){
+	            firstCol.defaultWidth = firstSize
+	        }
+
+	        if (secondCol && secondCol.width == null && secondCol.defaultWidth){
+	            secondCol.defaultWidth = secondSize
+	        }
+
+	        this.setState(config)
+
 	        onColumnResize(firstCol, firstSize, secondCol, secondSize)
 	    }
 	})
-
-/***/ },
-/* 6 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* WEBPACK VAR INJECTION */(function(global) {'use strict';
-
-	var el;
-
-	if(!!global.document){
-	  el = global.document.createElement('div');
-	}
-
-	var prefixes = ["ms", "Moz", "Webkit", "O"];
-	var properties = [
-	  'transform',
-	  'transition',
-	  'transformOrigin',
-	  'transformStyle',
-	  'transitionProperty',
-	  'transitionDuration',
-	  'transitionTimingFunction',
-	  'transitionDelay',
-	  'borderImage',
-	  'borderImageSlice',
-	  'boxShadow',
-	  'backgroundClip',
-	  'backfaceVisibility',
-	  'perspective',
-	  'perspectiveOrigin',
-	  'animation',
-	  'animationDuration',
-	  'animationName',
-	  'animationDelay',
-	  'animationDirection',
-	  'animationIterationCount',
-	  'animationTimingFunction',
-	  'animationPlayState',
-	  'animationFillMode',
-	  'appearance'
-	];
-
-	function GetVendorPrefix(property) {
-	  if(properties.indexOf(property) == -1 || !global.document || typeof el.style[property] !== 'undefined'){
-	    return property;
-	  }
-
-	  property = property[0].toUpperCase() + property.slice(1);
-	  var temp;
-
-	  for(var i = 0; i < prefixes.length; i++){
-	    temp = prefixes[i] + property;
-	    if(typeof el.style[temp] !== 'undefined'){
-	      prefixes = [prefixes[i]]; // we only need to check this one prefix from now on.
-	      return temp;
-	    }
-	  }
-	  return property[0].toLowerCase() + property.slice(1);
-	}
-
-
-	module.exports = (function(){
-	  var cache = {};
-	  return function(obj){
-	    if(!global.document){
-	      return obj;
-	    }
-
-	    var result = {};
-
-	    for(var key in obj){
-	      if(cache[key] === undefined){
-	        cache[key] = GetVendorPrefix(key);  
-	      }
-	      result[cache[key]] = obj[key];
-	    }
-
-	    return result;
-	  };
-	})();
-	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
 /* 7 */
@@ -1105,8 +1136,37 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 
-	var humanize = __webpack_require__(31).humanize
+	var humanize = __webpack_require__(30).humanize
 	var assign   = __webpack_require__(17)
+
+	function getVisibleInfo(col){
+	    var visible = true
+	    var defaultVisible
+
+	    if (col.hidden != null){
+	        visible = !col.hidden
+	    } else if (col.visible != null){
+	        visible = !!col.visible
+	    } else {
+	        //no visible or hidden specified
+	        //so we look for defaultVisible/defaultHidden
+
+	        if (col.defaultHidden != null){
+	            defaultVisible = !col.defaultHidden
+	        } else if (col.defaultVisible != null){
+	            defaultVisible = !!col.defaultVisible
+	        }
+
+	        if (defaultVisible != null){
+	            visible = defaultVisible
+	        }
+	    }
+
+	    return {
+	        visible: visible,
+	        defaultVisible: defaultVisible
+	    }
+	}
 
 	var Column = function(col, props){
 
@@ -1135,11 +1195,22 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 	    col.filterable = !!col.filterable
 
-	    //hidden
-	    col.hidden = !!col.hidden
+	    var visibleInfo = getVisibleInfo(col)
+	    var visible = visibleInfo.visible
 
+	    if (visibleInfo.defaultVisible != null){
+	        col.defaultHidden  = !visibleInfo.defaultVisible
+	        col.defaultVisible = visibleInfo.defaultVisible
+	    }
+
+	    //hidden
+	    col.hidden = !visible
 	    //visible
-	    col.visible  = !col.hidden
+	    col.visible  = visible
+
+	    if (col.width == null && col.defaultWidth){
+	        col.width = col.defaultWidth
+	    }
 
 	    //flexible
 	    col.flexible = !col.width
@@ -1346,10 +1417,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	/** @jsx React.DOM */'use strict';
 
 	var React   = __webpack_require__(1)
-	var Region  = __webpack_require__(19)
-	var ReactMenu = React.createFactory(__webpack_require__(30))
+	var Region  = __webpack_require__(18)
+	var ReactMenu = React.createFactory(__webpack_require__(33))
 	var assign  = __webpack_require__(17)
-	var clone   = __webpack_require__(33)
+	var clone   = __webpack_require__(32)
 	var asArray = __webpack_require__(20)
 	var findIndexBy = __webpack_require__(21)
 	var findIndexByName = __webpack_require__(12)
@@ -1616,24 +1687,44 @@ return /******/ (function(modules) { // webpackBootstrap
 	        this.showMenu(column, menuOffset, event)
 	    },
 
-	    showMenu: function(column, offset){
+	    showMenu: function(column, offset, event){
 
 	        var menuItem = function(column){
 	            return {
-	                cls  : column.hidden? '': ' z-selected',
-	                label: column.title,
-	                fn   : this.toggleColumn.bind(this, column)
+	                cls     : column.visible?'z-selected': '',
+	                selected: column.visible? '✓': '',
+	                label   : column.title,
+	                fn      : this.toggleColumn.bind(this, column)
 	            }
 	        }.bind(this)
 
-	        function menu(props, columns){
+	        function menu(eventTarget, props){
 
+	            var columns = props.gridColumns
+
+	            props.columns = [ 'selected', 'label']
 	            props.items = columns.map(menuItem)
+	            props.alignTo = eventTarget
+	            props.alignPositions = [
+	                'tl-bl',
+	                'tr-br',
+	                'bl-tl',
+	                'br-tr'
+	            ]
+	            props.style = {
+	                position: 'absolute'
+	            }
 
-	            return ReactMenu(props)
+	            var factory = this.props.columnMenuFactory || ReactMenu
+
+	            var result = factory(props)
+
+	            return result === undefined?
+	                    ReactMenu(props):
+	                    result
 	        }
 
-	        this.props.showColumnMenu(menu.bind(this), column.name, offset)
+	        this.props.showColumnMenu(menu.bind(this, event.target), column.name, offset, event)
 	    },
 
 	    toggleColumn: function(column){
@@ -1752,7 +1843,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 
-	var hasown = __webpack_require__(32)
+	var hasown = __webpack_require__(31)
 
 	function copyIf(source, target){
 	    var hasOwn = hasown(target)
@@ -1891,8 +1982,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	/** @jsx React.DOM */'use strict';
 
 	var React = __webpack_require__(1)
-	var renderMenu = __webpack_require__(24)
-	var renderRow  = __webpack_require__(25)
+	var renderMenu = __webpack_require__(25)
+	var renderRow  = __webpack_require__(24)
 	var tableStyle  = __webpack_require__(26)
 	var slice  = __webpack_require__(14)
 
@@ -1929,7 +2020,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	var Cell        = __webpack_require__(27)
 	var CellFactory = React.createFactory(Cell)
 
-	var renderRow = __webpack_require__(25)
+	var renderRow = __webpack_require__(24)
 
 	function renderData(props, data, depth){
 
@@ -2041,6 +2132,12 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 18 */
 /***/ function(module, exports, __webpack_require__) {
 
+	module.exports = __webpack_require__(29)
+
+/***/ },
+/* 19 */
+/***/ function(module, exports, __webpack_require__) {
+
 	'use strict';
 
 	var React  = __webpack_require__(1)
@@ -2093,12 +2190,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	})
 
 /***/ },
-/* 19 */
-/***/ function(module, exports, __webpack_require__) {
-
-	module.exports = __webpack_require__(29)
-
-/***/ },
 /* 20 */
 /***/ function(module, exports, __webpack_require__) {
 
@@ -2144,7 +2235,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 
-	var Region     = __webpack_require__(19)
+	var Region     = __webpack_require__(18)
 	var DragHelper = __webpack_require__(36)
 
 	function range(start, end){
@@ -2284,7 +2375,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 
-	var Region     = __webpack_require__(19)
+	var Region     = __webpack_require__(18)
 	var DragHelper = __webpack_require__(36)
 
 	var findIndexByName = __webpack_require__(12)
@@ -2384,43 +2475,32 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	/** @jsx React.DOM */'use strict';
 
-	module.exports = function renderMenu(props){
-	    if (!props.menuColumn){
-	        return
-	    }
-
-	    var style  = {top: 0}
-	    var offset = props.menuOffset
-
-	    if (offset.left){
-	        style.left = offset.left + props.scrollLeft
-	    } else {
-	        style.right = offset.right - props.scrollLeft - props.scrollbarSize
-	    }
-
-	    return props.menu({
-	        style     : style,
-	        className : 'z-header-menu-column'
-	    }, props.allColumns)
-	}
-
-/***/ },
-/* 25 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/** @jsx React.DOM */'use strict';
-
 	var assign = __webpack_require__(17)
+
 	var Row        = __webpack_require__(28)
 	var RowFactory = React.createFactory(Row)
 
+	/**
+	 * Render a datagrid row
+	 *
+	 * @param  {Object}   props The props from which to build row props
+	 * @param  {Object}   data The data object that backs this row
+	 * @param  {Number}   index The index in the grid of the row to be rendered
+	 * @param  {Function} [fn] A function that can be used to modify built row props
+	 *
+	 * If props.rowFactory is specified, it will be used to build the ReactElement
+	 * corresponding to this row. In case it returns undefined, the default RowFactory will be used
+	 * (this case occurs when the rowFactory was specified just to modify the row props)
+	 *
+	 * @return {ReactElement}
+	 */
 	module.exports = function renderRow(props, data, index, fn){
 	    var factory  = props.rowFactory || RowFactory
 	    var key      = data[props.idProperty]
 
 	    var config = {
 	        className: index % 2 === 0? 'z-even': 'z-odd',
-	        // key      : index,
+
 	        key      : key,
 	        data     : data,
 	        index    : index,
@@ -2462,7 +2542,40 @@ return /******/ (function(modules) { // webpackBootstrap
 	        config = fn(config)
 	    }
 
-	    return factory(config)
+	    var row = factory(config)
+
+	    if (row === undefined){
+	        row = RowFactory(config)
+	    }
+
+	    return row
+	}
+
+/***/ },
+/* 25 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/** @jsx React.DOM */'use strict';
+
+	module.exports = function renderMenu(props){
+	    if (!props.menuColumn){
+	        return
+	    }
+
+	    var style  = {top: 0}
+	    var offset = props.menuOffset
+
+	    if (offset.left){
+	        style.left = offset.left + props.scrollLeft
+	    } else {
+	        style.right = offset.right - props.scrollLeft - props.scrollbarSize
+	    }
+
+	    return props.menu({
+	        style     : style,
+	        className : 'z-header-menu-column',
+	        gridColumns: props.allColumns
+	    })
 	}
 
 /***/ },
@@ -2610,24 +2723,24 @@ return /******/ (function(modules) { // webpackBootstrap
 	    },
 
 	    render: function() {
-
 	        var props = this.prepareProps(this.props)
 	        var cells = props.children || props.columns
-	                                        .map(this.renderCell.bind(this, props), this)
+	                                        .map(this.renderCell.bind(this, this.props))
 
-	        return React.DOM.div({
-	            onMouseEnter: this.handleMouseEnter,
-	            onMouseLeave: this.handleMouseLeave,
-	            style       : props.style,
-	            className   : props.className
-	        }, cells)
+	        return React.createElement("div", React.__spread({},  props), cells)
 	    },
 
 	    prepareProps: function(thisProps){
 	        var props = assign({}, thisProps)
 
-	        this.prepareClassName(props, this.state)
+	        props.className = this.prepareClassName(props, this.state)
 	        props.style = this.prepareStyle(props)
+
+	        props.onMouseEnter = this.handleMouseEnter
+	        props.onMouseLeave = this.handleMouseLeave
+
+	        delete props.data
+	        delete props.cellPadding
 
 	        return props
 	    },
@@ -2688,13 +2801,15 @@ return /******/ (function(modules) { // webpackBootstrap
 	    },
 
 	    prepareClassName: function(props, state){
-	        props.className = props.className || ''
+	        var className = props.className || ''
 
-	        props.className += ' ' + props.defaultClassName
+	        className += ' ' + props.defaultClassName
 
 	        if (state.mouseOver){
-	            props.className += ' ' + props.mouseOverCls
+	            className += ' ' + props.mouseOverCls
 	        }
+
+	        return className
 	    },
 
 	    prepareStyle: function(props){
@@ -2714,13 +2829,13 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 
-	var hasOwn    = __webpack_require__(51)
-	var newify    = __webpack_require__(53)
-	var copyUtils = __webpack_require__(57)
+	var hasOwn    = __webpack_require__(31)
+	var newify    = __webpack_require__(50)
+	var copyUtils = __webpack_require__(51)
 	var copyList  = copyUtils.copyList
 	var copy      = copyUtils.copy
-	var isObject  = __webpack_require__(54).object
-	var EventEmitter = __webpack_require__(52).EventEmitter
+	var isObject  = __webpack_require__(52).object
+	var EventEmitter = __webpack_require__(53).EventEmitter
 	var inherits = __webpack_require__(37)
 	var VALIDATE = __webpack_require__(38)
 
@@ -2974,8 +3089,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	     */
 	    getSize: function(){
 	        return {
-	            width  : this.getWidth(),
-	            height : this.getHeight()
+	            width  : this.width,
+	            height : this.height
 	        }
 	    },
 
@@ -2989,14 +3104,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	     * @return {Region} this
 	     */
 	    setPosition: function(position){
-	        var width  = this.getWidth(),
-	            height = this.getHeight()
+	        var width  = this.width
+	        var height = this.height
 
-	        if (position.left){
+	        if (position.left != undefined){
 	            position.right  = position.left + width
 	        }
 
-	        if (position.top){
+	        if (position.top != undefined){
 	            position.bottom = position.top  + height
 	        }
 
@@ -3010,18 +3125,18 @@ return /******/ (function(modules) { // webpackBootstrap
 	     * @return {Region} this
 	     */
 	    setSize: function(size){
-	        if (size.height && size.width){
+	        if (size.height != undefined && size.width != undefined){
 	            return this.set({
 	                right  : this.left + size.width,
-	                bottom : this.top + size.height
+	                bottom : this.top  + size.height
 	            })
 	        }
 
-	        if (size.width){
+	        if (size.width != undefined){
 	            this.setWidth(size.width)
 	        }
 
-	        if (size.height){
+	        if (size.height != undefined){
 	            this.setHeight(size.height)
 	        }
 
@@ -3430,7 +3545,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	     *  * 'cy' - See {@link #getPointYCenter}
 	     *  * 'b'  - See {@link #getPointBottom}
 	     *  * 'bc' - See {@link #getPointBottomCenter}
-	     *  * 'l'  - See {@link #getPointLeft}
+	     *  * 'l'  - See {@link #getPointLeft}F
 	     *  * 'lc' - See {@link #getPointLeftCenter}
 	     *  * 't'  - See {@link #getPointTop}
 	     *  * 'tc' - See {@link #getPointTopCenter}
@@ -3751,58 +3866,22 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 30 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/** @jsx React.DOM */'use strict';
-
-	__webpack_require__(55)
-
-	var React = __webpack_require__(1)
-	var Menu  = __webpack_require__(40)
-
-	var items = [
-	    {
-	        label: 'hello',
-	        fn: function() {
-	            console.log('well, hello')
-	        }
-	    },
-	    {
-	        label: 'hi'
-	    }
-	]
-
-	var App = React.createClass({displayName: 'App',
-
-	    render: function() {
-	        return React.createElement(Menu, {items: items, onClick: this.handleClick})
-	    },
-
-	    handleClick: function(item) {
-	        console.log('clicked ', item.label)
-	    }
-	})
-
-	React.render(React.createElement(App, null), document.getElementById('content'))
-
-/***/ },
-/* 31 */
-/***/ function(module, exports, __webpack_require__) {
-
 	module.exports = {
-	    toLowerFirst     : __webpack_require__(41),
-	    toUpperFirst     : __webpack_require__(42),
-	    separate         : __webpack_require__(43),
-	    stripWhitespace  : __webpack_require__(44),
-	    compactWhitespace: __webpack_require__(45),
-	    camelize         : __webpack_require__(46),
-	    humanize         : __webpack_require__(47),
-	    hyphenate        : __webpack_require__(48),
-	    endsWith         : __webpack_require__(49),
+	    toLowerFirst     : __webpack_require__(40),
+	    toUpperFirst     : __webpack_require__(41),
+	    separate         : __webpack_require__(42),
+	    stripWhitespace  : __webpack_require__(43),
+	    compactWhitespace: __webpack_require__(44),
+	    camelize         : __webpack_require__(45),
+	    humanize         : __webpack_require__(46),
+	    hyphenate        : __webpack_require__(47),
+	    endsWith         : __webpack_require__(48),
 
-	    is: __webpack_require__(50)
+	    is: __webpack_require__(49)
 	}
 
 /***/ },
-/* 32 */
+/* 31 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -3845,7 +3924,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	})
 
 /***/ },
-/* 33 */
+/* 32 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {'use strict';
@@ -3978,7 +4057,82 @@ return /******/ (function(modules) { // webpackBootstrap
 	  return new c();
 	};
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(58).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(54).Buffer))
+
+/***/ },
+/* 33 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/** @jsx React.DOM */'use strict';
+
+	var React = __webpack_require__(1)
+	var F     = __webpack_require__(55)
+	var copy  = __webpack_require__(51).copy
+
+	function emptyFn(){}
+
+	module.exports = React.createClass({
+
+	    displayName: 'Menu',
+
+	    getDefaultProps: function(){
+
+	        return {
+	            defaultStyle: {
+	                border : '1px solid gray',
+	                display: 'inline-block'
+	            },
+	            rowStyle: {
+	                cursor: 'pointer'
+	            },
+	            columnStyle: {
+	                padding: 10
+	            },
+	            columns: ['label'],
+	            items: [
+	                {
+	                    label: 'New item',
+	                    fn: function(){}
+	                }
+	            ]
+	        }
+	    },
+
+	    render: function() {
+	        var props = copy(this.props)
+
+	        props.style = copy(props.style, this.props.defaultStyle)
+
+	        return (
+	            React.createElement("div", React.__spread({},  props), 
+	                React.createElement("table", null, 
+	                    React.createElement("tbody", null, 
+	                        this.props.items.map(this.renderItem, this)
+	                    )
+	                )
+	            )
+	        )
+	    },
+
+	    renderItem: function(item, index) {
+	        return (
+	            React.createElement("tr", {style: this.props.rowStyle, key: index, onClick: this.handleClick(item, index).bind(this)}, 
+	                this.props.columns.map(this.renderColumn(item), this)
+	            )
+	        )
+	    },
+
+	    renderColumn: F.curry(function(item, column) {
+	        return React.createElement("td", {style: this.props.columnStyle, key: column}, item[column])
+	    }),
+
+	    handleClick: F.curry(function(item, index, event) {
+	        event.stopPropagation()
+
+	        ;(item.fn || emptyFn)(item, event)
+	        ;(this.props.onClick || emptyFn)(item, index, event)
+	    })
+	})
 
 /***/ },
 /* 34 */
@@ -4084,9 +4238,9 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict'
 
-	var F      = __webpack_require__(64)
-	var copy   = __webpack_require__(57).copy
-	var Region = __webpack_require__(65)
+	var F      = __webpack_require__(68)
+	var copy   = __webpack_require__(51).copy
+	var Region = __webpack_require__(69)
 
 	var Helper = function(config){
 	    this.config = config
@@ -4313,7 +4467,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 
-	var hasOwn   = __webpack_require__(51)
+	var hasOwn   = __webpack_require__(31)
 	var VALIDATE = __webpack_require__(38)
 
 	module.exports = function(REGION){
@@ -4372,7 +4526,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	                return reg
 	            }
 
-	            if (typeof document){
+	            if (typeof document != 'undefined'){
 	                if (typeof HTMLElement != 'undefined' && reg instanceof HTMLElement){
 	                    return REGION.fromDOM(reg)
 	                }
@@ -4530,81 +4684,6 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 40 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/** @jsx React.DOM */'use strict';
-
-	var React = __webpack_require__(1)
-	var F     = __webpack_require__(69)
-	var copy  = __webpack_require__(57).copy
-
-	function emptyFn(){}
-
-	module.exports = React.createClass({
-
-	    displayName: 'Menu',
-
-	    getDefaultProps: function(){
-
-	        return {
-	            defaultStyle: {
-	                border : '1px solid gray',
-	                display: 'inline-block'
-	            },
-	            rowStyle: {
-	                cursor: 'pointer'
-	            },
-	            columnStyle: {
-	                padding: 10
-	            },
-	            columns: ['label'],
-	            items: [
-	                {
-	                    label: 'New item',
-	                    fn: function(){}
-	                }
-	            ]
-	        }
-	    },
-
-	    render: function() {
-	        var props = copy(this.props)
-
-	        props.style = copy(props.style, this.props.defaultStyle)
-
-	        return (
-	            React.createElement("div", React.__spread({},  props), 
-	                React.createElement("table", null, 
-	                    React.createElement("tbody", null, 
-	                        this.props.items.map(this.renderItem, this)
-	                    )
-	                )
-	            )
-	        )
-	    },
-
-	    renderItem: function(item, index) {
-	        return (
-	            React.createElement("tr", {style: this.props.rowStyle, key: index, onClick: this.handleClick(item, index).bind(this)}, 
-	                this.props.columns.map(this.renderColumn(item), this)
-	            )
-	        )
-	    },
-
-	    renderColumn: F.curry(function(item, column) {
-	        return React.createElement("td", {style: this.props.columnStyle, key: column}, item[column])
-	    }),
-
-	    handleClick: F.curry(function(item, index, event) {
-	        event.stopPropagation()
-
-	        ;(item.fn || emptyFn)(item, event)
-	        ;(this.props.onClick || emptyFn)(item, index, event)
-	    })
-	})
-
-/***/ },
-/* 41 */
-/***/ function(module, exports, __webpack_require__) {
-
 	module.exports = function(str){
 	    return str.length?
 	            str.charAt(0).toLowerCase() + str.substring(1):
@@ -4612,7 +4691,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 42 */
+/* 41 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -4624,7 +4703,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 43 */
+/* 42 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -4646,7 +4725,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 44 */
+/* 43 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var RE = /\s/g
@@ -4660,7 +4739,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 45 */
+/* 44 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var RE = /\s+/g
@@ -4674,7 +4753,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 46 */
+/* 45 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -4683,7 +4762,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	       return letter ? letter.toUpperCase(): ''
 	   }
 
-	var hyphenRe = __webpack_require__(59)
+	var hyphenRe = __webpack_require__(56)
 
 	module.exports = function(str){
 	   return str?
@@ -4692,15 +4771,15 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 47 */
+/* 46 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
-	var separate     = __webpack_require__(43)
-	var camelize     = __webpack_require__(46)
-	var toUpperFirst = __webpack_require__(42)
-	var hyphenRe     = __webpack_require__(59)
+	var separate     = __webpack_require__(42)
+	var camelize     = __webpack_require__(45)
+	var toUpperFirst = __webpack_require__(41)
+	var hyphenRe     = __webpack_require__(56)
 
 	function toLowerAndSpace(str, letter){
 	    return letter? ' ' + letter.toLowerCase(): ' '
@@ -4717,19 +4796,19 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 48 */
+/* 47 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
-	var separate = __webpack_require__(43)
+	var separate = __webpack_require__(42)
 
 	module.exports = function(name){
 	   return separate(name).toLowerCase()
 	}
 
 /***/ },
-/* 49 */
+/* 48 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -4754,62 +4833,236 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 50 */
+/* 49 */
 /***/ function(module, exports, __webpack_require__) {
 
 	module.exports = {
-	    alphanum: __webpack_require__(60),
-	    match   : __webpack_require__(61),
-	    guid   : __webpack_require__(62),
+	    alphanum: __webpack_require__(57),
+	    match   : __webpack_require__(58),
+	    guid   : __webpack_require__(59),
 	    // email   : require('./email'),
-	    numeric   : __webpack_require__(63)
+	    numeric   : __webpack_require__(60)
+	}
+
+/***/ },
+/* 50 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var getInstantiatorFunction = __webpack_require__(61)
+
+	module.exports = function(fn, args){
+		return getInstantiatorFunction(args.length)(fn, args)
 	}
 
 /***/ },
 /* 51 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict'
+	module.exports = function(){
 
-	var hasOwn = Object.prototype.hasOwnProperty
+	    'use strict'
 
-	function curry(fn, n){
+	    var HAS_OWN       = Object.prototype.hasOwnProperty,
+	        STR_OBJECT    = 'object',
+	        STR_UNDEFINED = 'undefined'
 
-	    if (typeof n !== 'number'){
-	        n = fn.length
-	    }
+	    return {
 
-	    function getCurryClosure(prevArgs){
+	        /**
+	         * Copies all properties from source to destination
+	         *
+	         *      copy({name: 'jon',age:5}, this);
+	         *      // => this will have the 'name' and 'age' properties set to 'jon' and 5 respectively
+	         *
+	         * @param {Object} source
+	         * @param {Object} destination
+	         *
+	         * @return {Object} destination
+	         */
+	        copy: __webpack_require__(62),
 
-	        function curryClosure() {
+	        /**
+	         * Copies all properties from source to destination, if the property does not exist into the destination
+	         *
+	         *      copyIf({name: 'jon',age:5}, {age:7})
+	         *      // => { name: 'jon', age: 7}
+	         *
+	         * @param {Object} source
+	         * @param {Object} destination
+	         *
+	         * @return {Object} destination
+	         */
+	        copyIf: __webpack_require__(63),
 
-	            var len  = arguments.length
-	            var args = [].concat(prevArgs)
+	        /**
+	         * Copies all properties from source to a new object, with the given value. This object is returned
+	         *
+	         *      copyAs({name: 'jon',age:5})
+	         *      // => the resulting object will have the 'name' and 'age' properties set to 1
+	         *
+	         * @param {Object} source
+	         * @param {Object/Number/String} [value=1]
+	         *
+	         * @return {Object} destination
+	         */
+	        copyAs: function(source, value){
 
-	            if (len){
-	                args.push.apply(args, arguments)
+	            var destination = {}
+
+	            value = value || 1
+
+	            if (source != null && typeof source === STR_OBJECT ){
+
+	                for (var i in source) if ( HAS_OWN.call(source, i) ) {
+	                    destination[i] = value
+	                }
+
 	            }
 
-	            if (args.length < n){
-	                return getCurryClosure(args)
+	            return destination
+	        },
+
+	        /**
+	         * Copies all properties named in the list, from source to destination
+	         *
+	         *      copyList({name: 'jon',age:5, year: 2006}, {}, ['name','age'])
+	         *      // => {name: 'jon', age: 5}
+	         *
+	         * @param {Object} source
+	         * @param {Object} destination
+	         * @param {Array} list the array with the names of the properties to copy
+	         *
+	         * @return {Object} destination
+	         */
+	        copyList: __webpack_require__(64),
+
+	        /**
+	         * Copies all properties named in the list, from source to destination, if the property does not exist into the destination
+	         *
+	         *      copyListIf({name: 'jon',age:5, year: 2006}, {age: 10}, ['name','age'])
+	         *      // => {name: 'jon', age: 10}
+	         *
+	         * @param {Object} source
+	         * @param {Object} destination
+	         * @param {Array} list the array with the names of the properties to copy
+	         *
+	         * @return {Object} destination
+	         */
+	        copyListIf: __webpack_require__(65),
+
+	        /**
+	         * Copies all properties named in the namedKeys, from source to destination
+	         *
+	         *      copyKeys({name: 'jon',age:5, year: 2006, date: '2010/05/12'}, {}, {name:1 ,age: true, year: 'theYear'})
+	         *      // => {name: 'jon', age: 5, theYear: 2006}
+	         *
+	         * @param {Object} source
+	         * @param {Object} destination
+	         * @param {Object} namedKeys an object with keys denoting the properties to be copied
+	         *
+	         * @return {Object} destination
+	         */
+	        copyKeys: __webpack_require__(66),
+
+	        /**
+	         * Copies all properties named in the namedKeys, from source to destination,
+	         * but only if the property does not already exist in the destination object
+	         *
+	         *      copyKeysIf({name: 'jon',age:5, year: 2006}, {aname: 'test'}, {name:'aname' ,age: true})
+	         *      // => {aname: 'test', age: 5}
+	         *
+	         * @param {Object} source
+	         * @param {Object} destination
+	         * @param {Object} namedKeys an object with keys denoting the properties to be copied
+	         *
+	         * @return {Object} destination
+	         */
+	        copyKeysIf: __webpack_require__(67),
+
+	        copyExceptKeys: function(source, destination, exceptKeys){
+	            destination = destination || {}
+	            exceptKeys  = exceptKeys  || {}
+
+	            if (source != null && typeof source === STR_OBJECT ){
+
+	                for (var i in source) if ( HAS_OWN.call(source, i) && !HAS_OWN.call(exceptKeys, i) ) {
+
+	                    destination[i] = source[i]
+	                }
+
 	            }
 
-	            return fn.apply(this, args)
+	            return destination
+	        },
+
+	        /**
+	         * Copies the named keys from source to destination.
+	         * For the keys that are functions, copies the functions bound to the source
+	         *
+	         * @param  {Object} source      The source object
+	         * @param  {Object} destination The target object
+	         * @param  {Object} namedKeys   An object with the names of the keys to copy The values from the keys in this object
+	         *                              need to be either numbers or booleans if you want to copy the property under the same name,
+	         *                              or a string if you want to copy the property under a different name
+	         * @return {Object}             Returns the destination object
+	         */
+	        bindCopyKeys: function(source, destination, namedKeys){
+	            if (arguments.length == 2){
+	                namedKeys = destination
+	                destination = null
+	            }
+
+	            destination = destination || {}
+
+	            if (
+	                       source != null && typeof source    === STR_OBJECT &&
+	                    namedKeys != null && typeof namedKeys === STR_OBJECT
+	                ) {
+
+
+	                var typeOfNamedProperty,
+	                    namedPropertyValue,
+
+	                    typeOfSourceProperty,
+	                    propValue
+
+
+	                for(var propName in namedKeys) if (HAS_OWN.call(namedKeys, propName)) {
+
+	                    namedPropertyValue = namedKeys[propName]
+	                    typeOfNamedProperty = typeof namedPropertyValue
+
+	                    propValue = source[propName]
+	                    typeOfSourceProperty = typeof propValue
+
+
+	                    if ( typeOfSourceProperty !== STR_UNDEFINED ) {
+
+	                        destination[
+	                            typeOfNamedProperty == 'string'?
+	                                            namedPropertyValue :
+	                                            propName
+	                            ] = typeOfSourceProperty == 'function' ?
+	                                            propValue.bind(source):
+	                                            propValue
+	                    }
+	                }
+	            }
+
+	            return destination
 	        }
-
-	        return curryClosure
 	    }
 
-	    return getCurryClosure([])
-	}
-
-
-	module.exports = curry(function(object, property){
-	    return hasOwn.call(object, property)
-	})
+	}()
 
 /***/ },
 /* 52 */
+/***/ function(module, exports, __webpack_require__) {
+
+	module.exports = __webpack_require__(70)
+
+/***/ },
+/* 53 */
 /***/ function(module, exports, __webpack_require__) {
 
 	// Copyright Joyent, Inc. and other Node contributors.
@@ -5116,255 +5369,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 53 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var getInstantiatorFunction = __webpack_require__(66)
-
-	module.exports = function(fn, args){
-		return getInstantiatorFunction(args.length)(fn, args)
-	}
-
-/***/ },
 /* 54 */
-/***/ function(module, exports, __webpack_require__) {
-
-	module.exports = __webpack_require__(68)
-
-/***/ },
-/* 55 */
-/***/ function(module, exports, __webpack_require__) {
-
-	// style-loader: Adds some css to the DOM by adding a <style> tag
-
-	// load the styles
-	var content = __webpack_require__(56);
-	if(typeof content === 'string') content = [[module.id, content, '']];
-	// add the styles to the DOM
-	var update = __webpack_require__(67)(content, {});
-	// Hot Module Replacement
-	if(false) {
-		// When the styles change, update the <style> tags
-		module.hot.accept("!!/home/radu/code/react-treegrid/node_modules/react-datagrid/node_modules/css-loader/index.js!/home/radu/code/react-treegrid/node_modules/react-datagrid/node_modules/stylus-loader/index.js!/home/radu/code/react-treegrid/node_modules/react-datagrid/node_modules/react-menus/index.styl", function() {
-			var newContent = require("!!/home/radu/code/react-treegrid/node_modules/react-datagrid/node_modules/css-loader/index.js!/home/radu/code/react-treegrid/node_modules/react-datagrid/node_modules/stylus-loader/index.js!/home/radu/code/react-treegrid/node_modules/react-datagrid/node_modules/react-menus/index.styl");
-			if(typeof newContent === 'string') newContent = [module.id, newContent, ''];
-			update(newContent);
-		});
-		// When the module is disposed, remove the <style> tags
-		module.hot.dispose(function() { update(); });
-	}
-
-/***/ },
-/* 56 */
-/***/ function(module, exports, __webpack_require__) {
-
-	exports = module.exports = __webpack_require__(152)();
-	__webpack_require__(153)(exports, __webpack_require__(137), "");
-	exports.push([module.id, "\n", ""]);
-
-/***/ },
-/* 57 */
-/***/ function(module, exports, __webpack_require__) {
-
-	module.exports = function(){
-
-	    'use strict'
-
-	    var HAS_OWN       = Object.prototype.hasOwnProperty,
-	        STR_OBJECT    = 'object',
-	        STR_UNDEFINED = 'undefined'
-
-	    return {
-
-	        /**
-	         * Copies all properties from source to destination
-	         *
-	         *      copy({name: 'jon',age:5}, this);
-	         *      // => this will have the 'name' and 'age' properties set to 'jon' and 5 respectively
-	         *
-	         * @param {Object} source
-	         * @param {Object} destination
-	         *
-	         * @return {Object} destination
-	         */
-	        copy: __webpack_require__(70),
-
-	        /**
-	         * Copies all properties from source to destination, if the property does not exist into the destination
-	         *
-	         *      copyIf({name: 'jon',age:5}, {age:7})
-	         *      // => { name: 'jon', age: 7}
-	         *
-	         * @param {Object} source
-	         * @param {Object} destination
-	         *
-	         * @return {Object} destination
-	         */
-	        copyIf: __webpack_require__(71),
-
-	        /**
-	         * Copies all properties from source to a new object, with the given value. This object is returned
-	         *
-	         *      copyAs({name: 'jon',age:5})
-	         *      // => the resulting object will have the 'name' and 'age' properties set to 1
-	         *
-	         * @param {Object} source
-	         * @param {Object/Number/String} [value=1]
-	         *
-	         * @return {Object} destination
-	         */
-	        copyAs: function(source, value){
-
-	            var destination = {}
-
-	            value = value || 1
-
-	            if (source != null && typeof source === STR_OBJECT ){
-
-	                for (var i in source) if ( HAS_OWN.call(source, i) ) {
-	                    destination[i] = value
-	                }
-
-	            }
-
-	            return destination
-	        },
-
-	        /**
-	         * Copies all properties named in the list, from source to destination
-	         *
-	         *      copyList({name: 'jon',age:5, year: 2006}, {}, ['name','age'])
-	         *      // => {name: 'jon', age: 5}
-	         *
-	         * @param {Object} source
-	         * @param {Object} destination
-	         * @param {Array} list the array with the names of the properties to copy
-	         *
-	         * @return {Object} destination
-	         */
-	        copyList: __webpack_require__(72),
-
-	        /**
-	         * Copies all properties named in the list, from source to destination, if the property does not exist into the destination
-	         *
-	         *      copyListIf({name: 'jon',age:5, year: 2006}, {age: 10}, ['name','age'])
-	         *      // => {name: 'jon', age: 10}
-	         *
-	         * @param {Object} source
-	         * @param {Object} destination
-	         * @param {Array} list the array with the names of the properties to copy
-	         *
-	         * @return {Object} destination
-	         */
-	        copyListIf: __webpack_require__(73),
-
-	        /**
-	         * Copies all properties named in the namedKeys, from source to destination
-	         *
-	         *      copyKeys({name: 'jon',age:5, year: 2006, date: '2010/05/12'}, {}, {name:1 ,age: true, year: 'theYear'})
-	         *      // => {name: 'jon', age: 5, theYear: 2006}
-	         *
-	         * @param {Object} source
-	         * @param {Object} destination
-	         * @param {Object} namedKeys an object with keys denoting the properties to be copied
-	         *
-	         * @return {Object} destination
-	         */
-	        copyKeys: __webpack_require__(74),
-
-	        /**
-	         * Copies all properties named in the namedKeys, from source to destination,
-	         * but only if the property does not already exist in the destination object
-	         *
-	         *      copyKeysIf({name: 'jon',age:5, year: 2006}, {aname: 'test'}, {name:'aname' ,age: true})
-	         *      // => {aname: 'test', age: 5}
-	         *
-	         * @param {Object} source
-	         * @param {Object} destination
-	         * @param {Object} namedKeys an object with keys denoting the properties to be copied
-	         *
-	         * @return {Object} destination
-	         */
-	        copyKeysIf: __webpack_require__(75),
-
-	        copyExceptKeys: function(source, destination, exceptKeys){
-	            destination = destination || {}
-	            exceptKeys  = exceptKeys  || {}
-
-	            if (source != null && typeof source === STR_OBJECT ){
-
-	                for (var i in source) if ( HAS_OWN.call(source, i) && !HAS_OWN.call(exceptKeys, i) ) {
-
-	                    destination[i] = source[i]
-	                }
-
-	            }
-
-	            return destination
-	        },
-
-	        /**
-	         * Copies the named keys from source to destination.
-	         * For the keys that are functions, copies the functions bound to the source
-	         *
-	         * @param  {Object} source      The source object
-	         * @param  {Object} destination The target object
-	         * @param  {Object} namedKeys   An object with the names of the keys to copy The values from the keys in this object
-	         *                              need to be either numbers or booleans if you want to copy the property under the same name,
-	         *                              or a string if you want to copy the property under a different name
-	         * @return {Object}             Returns the destination object
-	         */
-	        bindCopyKeys: function(source, destination, namedKeys){
-	            if (arguments.length == 2){
-	                namedKeys = destination
-	                destination = null
-	            }
-
-	            destination = destination || {}
-
-	            if (
-	                       source != null && typeof source    === STR_OBJECT &&
-	                    namedKeys != null && typeof namedKeys === STR_OBJECT
-	                ) {
-
-
-	                var typeOfNamedProperty,
-	                    namedPropertyValue,
-
-	                    typeOfSourceProperty,
-	                    propValue
-
-
-	                for(var propName in namedKeys) if (HAS_OWN.call(namedKeys, propName)) {
-
-	                    namedPropertyValue = namedKeys[propName]
-	                    typeOfNamedProperty = typeof namedPropertyValue
-
-	                    propValue = source[propName]
-	                    typeOfSourceProperty = typeof propValue
-
-
-	                    if ( typeOfSourceProperty !== STR_UNDEFINED ) {
-
-	                        destination[
-	                            typeOfNamedProperty == 'string'?
-	                                            namedPropertyValue :
-	                                            propName
-	                            ] = typeOfSourceProperty == 'function' ?
-	                                            propValue.bind(source):
-	                                            propValue
-	                    }
-	                }
-	            }
-
-	            return destination
-	        }
-	    }
-
-	}()
-
-/***/ },
-/* 58 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {/*!
@@ -5374,9 +5379,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	 * @license  MIT
 	 */
 
-	var base64 = __webpack_require__(108)
-	var ieee754 = __webpack_require__(80)
-	var isArray = __webpack_require__(93)
+	var base64 = __webpack_require__(103)
+	var ieee754 = __webpack_require__(84)
+	var isArray = __webpack_require__(85)
 
 	exports.Buffer = Buffer
 	exports.SlowBuffer = Buffer
@@ -6420,59 +6425,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }
 	}
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(76).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(71).Buffer))
 
 /***/ },
-/* 59 */
-/***/ function(module, exports, __webpack_require__) {
-
-	module.exports = /[-\s]+(.)?/g
-
-/***/ },
-/* 60 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict'
-
-	module.exports = __webpack_require__(61)(/^[a-zA-Z0-9]+$/)
-
-/***/ },
-/* 61 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict'
-
-	var F = __webpack_require__(106)
-
-	module.exports = F.curry(function(re, value){
-	    return !!re.test(value)
-	})
-
-/***/ },
-/* 62 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict'
-
-	var regex = /^[A-F0-9]{8}(?:-?[A-F0-9]{4}){3}-?[A-F0-9]{12}$/i
-	var regex2 = /^\{[A-F0-9]{8}(?:-?[A-F0-9]{4}){3}-?[A-F0-9]{12}\}$/i
-
-	module.exports = function(value){
-	    return regex.test(value) || regex2.test(value)
-	}
-
-
-
-/***/ },
-/* 63 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict'
-
-	module.exports = __webpack_require__(107).numeric
-
-/***/ },
-/* 64 */
+/* 55 */
 /***/ function(module, exports, __webpack_require__) {
 
 	    var setImmediate = function(fn){
@@ -6552,7 +6508,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	    var SLICE = Array.prototype.slice
 
-	    var curry = __webpack_require__(94),
+	    var curry = __webpack_require__(72),
 
 	        findFn = function(fn, target, onFound){
 	            // if (typeof target.find == 'function'){
@@ -6623,19 +6579,19 @@ return /******/ (function(modules) { // webpackBootstrap
 	         *
 	         * @return the result of the first function in the enumeration
 	         */
-	        compose = __webpack_require__(95),
+	        compose = __webpack_require__(73),
 
-	        chain = __webpack_require__(96),
+	        chain = __webpack_require__(74),
 
-	        once = __webpack_require__(97),
+	        once = __webpack_require__(75),
 
-	        bindArgsArray = __webpack_require__(98),
+	        bindArgsArray = __webpack_require__(76),
 
-	        bindArgs = __webpack_require__(99),
+	        bindArgs = __webpack_require__(77),
 
-	        lockArgsArray = __webpack_require__(100),
+	        lockArgsArray = __webpack_require__(78),
 
-	        lockArgs = __webpack_require__(101),
+	        lockArgs = __webpack_require__(79),
 
 	        skipArgs = function(fn, count){
 	            return function(){
@@ -6993,11 +6949,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	module.exports = {
 
-	    map: __webpack_require__(102),
+	    map: __webpack_require__(80),
 
-	    dot: __webpack_require__(103),
+	    dot: __webpack_require__(81),
 
-	    maxArgs: __webpack_require__(104),
+	    maxArgs: __webpack_require__(82),
 
 	    /**
 	     * @method compose
@@ -7116,21 +7072,1033 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	    findIndex: findIndex,
 
-	    newify: __webpack_require__(105)
+	    newify: __webpack_require__(83)
+	}
+
+/***/ },
+/* 56 */
+/***/ function(module, exports, __webpack_require__) {
+
+	module.exports = /[-\s]+(.)?/g
+
+/***/ },
+/* 57 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict'
+
+	module.exports = __webpack_require__(58)(/^[a-zA-Z0-9]+$/)
+
+/***/ },
+/* 58 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict'
+
+	var F = __webpack_require__(102)
+
+	module.exports = F.curry(function(re, value){
+	    return !!re.test(value)
+	})
+
+/***/ },
+/* 59 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict'
+
+	var regex = /^[A-F0-9]{8}(?:-?[A-F0-9]{4}){3}-?[A-F0-9]{12}$/i
+	var regex2 = /^\{[A-F0-9]{8}(?:-?[A-F0-9]{4}){3}-?[A-F0-9]{12}\}$/i
+
+	module.exports = function(value){
+	    return regex.test(value) || regex2.test(value)
+	}
+
+
+
+/***/ },
+/* 60 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict'
+
+	module.exports = __webpack_require__(101).numeric
+
+/***/ },
+/* 61 */
+/***/ function(module, exports, __webpack_require__) {
+
+	module.exports = function(){
+
+	    'use strict';
+
+	    var fns = {}
+
+	    return function(len){
+
+	        if ( ! fns [len ] ) {
+
+	            var args = []
+	            var i    = 0
+
+	            for (; i < len; i++ ) {
+	                args.push( 'a[' + i + ']')
+	            }
+
+	            fns[len] = new Function(
+	                            'c',
+	                            'a',
+	                            'return new c(' + args.join(',') + ')'
+	                        )
+	        }
+
+	        return fns[len]
+	    }
+
+	}()
+
+/***/ },
+/* 62 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict'
+
+	var HAS_OWN       = Object.prototype.hasOwnProperty
+	var STR_OBJECT    = 'object'
+
+	/**
+	 * Copies all properties from source to destination
+	 *
+	 *      copy({name: 'jon',age:5}, this);
+	 *      // => this will have the 'name' and 'age' properties set to 'jon' and 5 respectively
+	 *
+	 * @param {Object} source
+	 * @param {Object} destination
+	 *
+	 * @return {Object} destination
+	 */
+	module.exports = function(source, destination){
+
+	    destination = destination || {}
+
+	    if (source != null && typeof source === STR_OBJECT ){
+
+	        for (var i in source) if ( HAS_OWN.call(source, i) ) {
+	            destination[i] = source[i]
+	        }
+
+	    }
+
+	    return destination
+	}
+
+/***/ },
+/* 63 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict'
+
+	var HAS_OWN       = Object.prototype.hasOwnProperty
+	var STR_OBJECT    = 'object'
+	var STR_UNDEFINED = 'undefined'
+
+	/**
+	 * Copies all properties from source to destination, if the property does not exist into the destination
+	 *
+	 *      copyIf({name: 'jon',age:5}, {age:7})
+	 *      // => { name: 'jon', age: 7}
+	 *
+	 * @param {Object} source
+	 * @param {Object} destination
+	 *
+	 * @return {Object} destination
+	 */
+	module.exports = function(source, destination){
+	    destination = destination || {}
+
+	    if (source != null && typeof source === STR_OBJECT){
+
+	        for (var i in source) if ( HAS_OWN.call(source, i) && (typeof destination[i] === STR_UNDEFINED) ) {
+
+	            destination[i] = source[i]
+
+	        }
+	    }
+
+	    return destination
+	}
+
+/***/ },
+/* 64 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict'
+
+	var STR_UNDEFINED = 'undefined'
+
+	/**
+	 * Copies all properties named in the list, from source to destination
+	 *
+	 *      copyList({name: 'jon',age:5, year: 2006}, {}, ['name','age'])
+	 *      // => {name: 'jon', age: 5}
+	 *
+	 * @param {Object} source
+	 * @param {Object} destination
+	 * @param {Array} list the array with the names of the properties to copy
+	 *
+	 * @return {Object} destination
+	 */
+	module.exports = function(source, destination, list){
+	    if (arguments.length < 3){
+	        list = destination
+	        destination = null
+	    }
+
+	    destination = destination || {}
+	    list        = list || Object.keys(source)
+
+	    var i   = 0
+	    var len = list.length
+	    var propName
+
+	    for ( ; i < len; i++ ){
+	        propName = list[i]
+
+	        if ( typeof source[propName] !== STR_UNDEFINED ) {
+	            destination[list[i]] = source[list[i]]
+	        }
+	    }
+
+	    return destination
 	}
 
 /***/ },
 /* 65 */
 /***/ function(module, exports, __webpack_require__) {
 
+	'use strict'
+
+	var STR_UNDEFINED = 'undefined'
+
+	/**
+	 * Copies all properties named in the list, from source to destination, if the property does not exist into the destination
+	 *
+	 *      copyListIf({name: 'jon',age:5, year: 2006}, {age: 10}, ['name','age'])
+	 *      // => {name: 'jon', age: 10}
+	 *
+	 * @param {Object} source
+	 * @param {Object} destination
+	 * @param {Array} list the array with the names of the properties to copy
+	 *
+	 * @return {Object} destination
+	 */
+	module.exports = function(source, destination, list){
+	    if (arguments.length < 3){
+	        list = destination
+	        destination = null
+	    }
+
+	    destination = destination || {}
+	    list        = list || Object.keys(source)
+
+	    var i   = 0
+	    var len = list.length
+	    var propName
+
+	    for ( ; i < len ; i++ ){
+	        propName = list[i]
+	        if (
+	                (typeof source[propName]      !== STR_UNDEFINED) &&
+	                (typeof destination[propName] === STR_UNDEFINED)
+	            ){
+	            destination[propName] = source[propName]
+	        }
+	    }
+
+	    return destination
+	}
+
+/***/ },
+/* 66 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict'
+
+	var STR_UNDEFINED = 'undefined'
+	var STR_OBJECT    = 'object'
+	var HAS_OWN       = Object.prototype.hasOwnProperty
+
+	var copyList = __webpack_require__(64)
+
+	/**
+	 * Copies all properties named in the namedKeys, from source to destination
+	 *
+	 *      copyKeys({name: 'jon',age:5, year: 2006, date: '2010/05/12'}, {}, {name:1 ,age: true, year: 'theYear'})
+	 *      // => {name: 'jon', age: 5, theYear: 2006}
+	 *
+	 * @param {Object} source
+	 * @param {Object} destination
+	 * @param {Object} namedKeys an object with keys denoting the properties to be copied
+	 *
+	 * @return {Object} destination
+	 */
+	module.exports = function(source, destination, namedKeys){
+	    if (arguments.length < 3 ){
+	        namedKeys = destination
+	        destination = null
+	    }
+
+	    destination = destination || {}
+
+	    if (!namedKeys || Array.isArray(namedKeys)){
+	        return copyList(source, destination, namedKeys)
+	    }
+
+	    if (
+	           source != null && typeof source    === STR_OBJECT &&
+	        namedKeys != null && typeof namedKeys === STR_OBJECT
+	    ) {
+	        var typeOfNamedProperty
+	        var namedPropertyValue
+
+	        for  (var propName in namedKeys) if ( HAS_OWN.call(namedKeys, propName) ) {
+	            namedPropertyValue  = namedKeys[propName]
+	            typeOfNamedProperty = typeof namedPropertyValue
+
+	            if (typeof source[propName] !== STR_UNDEFINED){
+	                destination[typeOfNamedProperty == 'string'? namedPropertyValue : propName] = source[propName]
+	            }
+	        }
+	    }
+
+	    return destination
+	}
+
+/***/ },
+/* 67 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict'
+
+	var STR_UNDEFINED = 'undefined'
+	var STR_OBJECT    = 'object'
+	var HAS_OWN       = Object.prototype.hasOwnProperty
+
+	var copyListIf = __webpack_require__(65)
+
+	/**
+	 * Copies all properties named in the namedKeys, from source to destination,
+	 * but only if the property does not already exist in the destination object
+	 *
+	 *      copyKeysIf({name: 'jon',age:5, year: 2006}, {aname: 'test'}, {name:'aname' ,age: true})
+	 *      // => {aname: 'test', age: 5}
+	 *
+	 * @param {Object} source
+	 * @param {Object} destination
+	 * @param {Object} namedKeys an object with keys denoting the properties to be copied
+	 *
+	 * @return {Object} destination
+	 */
+	module.exports = function(source, destination, namedKeys){
+	    if (arguments.length < 3 ){
+	        namedKeys = destination
+	        destination = null
+	    }
+
+	    destination = destination || {}
+
+	    if (!namedKeys || Array.isArray(namedKeys)){
+	        return copyListIf(source, destination, namedKeys)
+	    }
+
+	    if (
+	               source != null && typeof source    === STR_OBJECT &&
+	            namedKeys != null && typeof namedKeys === STR_OBJECT
+	        ) {
+
+	            var typeOfNamedProperty
+	            var namedPropertyValue
+	            var newPropertyName
+
+	            for (var propName in namedKeys) if ( HAS_OWN.call(namedKeys, propName) ) {
+
+	                namedPropertyValue  = namedKeys[propName]
+	                typeOfNamedProperty = typeof namedPropertyValue
+	                newPropertyName     = typeOfNamedProperty == 'string'? namedPropertyValue : propName
+
+	                if (
+	                        typeof      source[propName]        !== STR_UNDEFINED &&
+	                        typeof destination[newPropertyName] === STR_UNDEFINED
+	                    ) {
+	                    destination[newPropertyName] = source[propName]
+	                }
+
+	            }
+	        }
+
+	    return destination
+	}
+
+/***/ },
+/* 68 */
+/***/ function(module, exports, __webpack_require__) {
+
+	    var setImmediate = function(fn){
+	        setTimeout(fn, 0)
+	    }
+	    var clearImmediate = clearTimeout
+	    /**
+	     * Utility methods for working with functions.
+	     * These methods augment the Function prototype.
+	     *
+	     * Using {@link #before}
+	     *
+	     *      function log(m){
+	     *          console.log(m)
+	     *      }
+	     *
+	     *      var doLog = function (m){
+	     *          console.log('LOG ')
+	     *      }.before(log)
+	     *
+	     *      doLog('test')
+	     *      //will log
+	     *      //"LOG "
+	     *      //and then
+	     *      //"test"
+	     *
+	     *
+	     *
+	     * Using {@link #bindArgs}:
+	     *
+	     *      //returns the sum of all arguments
+	     *      function add(){
+	     *          var sum = 0
+	     *          [].from(arguments).forEach(function(n){
+	     *              sum += n
+	     *          })
+	     *
+	     *          return sum
+	     *      }
+	     *
+	     *      var add1 = add.bindArgs(1)
+	     *
+	     *      add1(2, 3) == 6
+	     *
+	     * Using {@link #lockArgs}:
+	     *
+	     *      function add(){
+	     *          var sum = 0
+	     *          [].from(arguments).forEach(function(n){
+	     *              sum += n
+	     *          })
+	     *
+	     *          return sum
+	     *      }
+	     *
+	     *      var add1_2   = add.lockArgs(1,2)
+	     *      var add1_2_3 = add.lockArgs(1,2,3)
+	     *
+	     *      add1_2(3,4)  == 3 //args are locked to only be 1 and 2
+	     *      add1_2_3(6)  == 6 //args are locked to only be 1, 2 and 3
+	     *
+	     *
+	     *
+	     * Using {@link #compose}:
+	     *
+	     *      function multiply(a,b){
+	     *          return a* b
+	     *      }
+	     *
+	     *      var multiply2 = multiply.curry()(2)
+	     *
+	     *      Function.compose(multiply2( add(5,6) )) == multiply2( add(5,6) )
+	     *
+	     *
+	     * @class Function
+	     */
+
+	    var SLICE = Array.prototype.slice
+
+	    var curry = __webpack_require__(104),
+
+	        findFn = function(fn, target, onFound){
+	            // if (typeof target.find == 'function'){
+	            //     return target.find(fn)
+	            // }
+
+	            onFound = typeof onFound == 'function'?
+	                        onFound:
+	                        function(found, key, target){
+	                            return found
+	                        }
+
+	            if (Array.isArray(target)){
+	                var i   = 0
+	                var len = target.length
+	                var it
+
+	                for(; i < len; i++){
+	                    it = target[i]
+	                    if (fn(it, i, target)){
+	                        return onFound(it, i, target)
+	                    }
+	                }
+
+	                return
+	            }
+
+	            if (typeof target == 'object'){
+	                var keys = Object.keys(target)
+	                var i = 0
+	                var len = keys.length
+	                var k
+	                var it
+
+	                for( ; i < len; i++){
+	                    k  = keys[i]
+	                    it = target[k]
+
+	                    if (fn(it, k, target)){
+	                        return onFound(it, k, target)
+	                    }
+	                }
+	            }
+	        },
+
+	        find = curry(findFn, 2),
+
+	        findIndex = curry(function(fn, target){
+	            return findFn(fn, target, function(it, i){
+	                return i
+	            })
+	        }),
+
+	        bindFunctionsOf = function(obj) {
+	            Object.keys(obj).forEach(function(k){
+	                if (typeof obj[k] == 'function'){
+	                    obj[k] = obj[k].bind(obj)
+	                }
+	            })
+
+	            return obj
+	        },
+
+	        /*
+	         * @param {Function...} an enumeration of functions, each consuming the result of the following function.
+	         *
+	         * For example: compose(c, b, a)(1,4) == c(b(a(1,4)))
+	         *
+	         * @return the result of the first function in the enumeration
+	         */
+	        compose = __webpack_require__(105),
+
+	        chain = __webpack_require__(106),
+
+	        once = __webpack_require__(107),
+
+	        bindArgsArray = __webpack_require__(108),
+
+	        bindArgs = __webpack_require__(109),
+
+	        lockArgsArray = __webpack_require__(110),
+
+	        lockArgs = __webpack_require__(111),
+
+	        skipArgs = function(fn, count){
+	            return function(){
+	                var args = SLICE.call(arguments, count || 0)
+
+	                return fn.apply(this, args)
+	            }
+	        },
+
+	        intercept = function(interceptedFn, interceptingFn, withStopArg){
+
+	            return function(){
+	                var args    = [].from(arguments),
+	                    stopArg = { stop: false }
+
+	                if (withStopArg){
+	                    args.push(stopArg)
+	                }
+
+	                var result = interceptingFn.apply(this, args)
+
+	                if (withStopArg){
+	                    if (stopArg.stop === true){
+	                        return result
+	                    }
+
+	                } else {
+	                    if (result === false){
+	                        return result
+	                    }
+	                }
+
+	                //the interception was not stopped
+	                return interceptedFn.apply(this, arguments)
+	            }
+
+	        },
+
+	        delay = function(fn, delay, scope){
+
+	            var delayIsNumber = delay * 1 == delay
+
+	            if (arguments.length == 2 && !delayIsNumber){
+	                scope = delay
+	                delay = 0
+	            } else {
+	                if (!delayIsNumber){
+	                    delay = 0
+	                }
+	            }
+
+	            return function(){
+	                var self = scope || this,
+	                    args = arguments
+
+	                if (delay < 0){
+	                    fn.apply(self, args)
+	                    return
+	                }
+
+	                if (delay || !setImmediate){
+	                    setTimeout(function(){
+	                        fn.apply(self, args)
+	                    }, delay)
+
+	                } else {
+	                    setImmediate(function(){
+	                        fn.apply(self, args)
+	                    })
+	                }
+	            }
+	        },
+
+	        defer = function(fn, scope){
+	            return delay(fn, 0, scope)
+	        },
+
+	        buffer = function(fn, delay, scope){
+
+	            var timeoutId = -1
+
+	            return function(){
+
+	                var self = scope || this,
+	                    args = arguments
+
+	                if (delay < 0){
+	                    fn.apply(self, args)
+	                    return
+	                }
+
+	                var withTimeout = delay || !setImmediate,
+	                    clearFn = withTimeout?
+	                                clearTimeout:
+	                                clearImmediate,
+	                    setFn   = withTimeout?
+	                                setTimeout:
+	                                setImmediate
+
+	                if (timeoutId !== -1){
+	                    clearFn(timeoutId)
+	                }
+
+	                timeoutId = setFn(function(){
+	                    fn.apply(self, args)
+	                    self = null
+	                }, delay)
+
+	            }
+
+	        },
+
+	        throttle = function(fn, delay, scope) {
+	            var timeoutId = -1,
+	                self,
+	                args
+
+	            return function () {
+
+	                self = scope || this
+	                args = arguments
+
+	                if (timeoutId !== -1) {
+	                    //the function was called once again in the delay interval
+	                } else {
+	                    timeoutId = setTimeout(function () {
+	                        fn.apply(self, args)
+
+	                        self = null
+	                        timeoutId = -1
+	                    }, delay)
+	                }
+
+	            }
+
+	        },
+
+	        spread = function(fn, delay, scope){
+
+	            var timeoutId       = -1
+	            var callCount       = 0
+	            var executeCount    = 0
+	            var nextArgs        = {}
+	            var increaseCounter = true
+	            var resultingFnUnbound
+	            var resultingFn
+
+	            resultingFn = resultingFnUnbound = function(){
+
+	                var args = arguments,
+	                    self = scope || this
+
+	                if (increaseCounter){
+	                    nextArgs[callCount++] = {args: args, scope: self}
+	                }
+
+	                if (timeoutId !== -1){
+	                    //the function was called once again in the delay interval
+	                } else {
+	                    timeoutId = setTimeout(function(){
+	                        fn.apply(self, args)
+
+	                        timeoutId = -1
+	                        executeCount++
+
+	                        if (callCount !== executeCount){
+	                            resultingFn = bindArgsArray(resultingFnUnbound, nextArgs[executeCount].args).bind(nextArgs[executeCount].scope)
+	                            delete nextArgs[executeCount]
+
+	                            increaseCounter = false
+	                            resultingFn.apply(self)
+	                            increaseCounter = true
+	                        } else {
+	                            nextArgs = {}
+	                        }
+	                    }, delay)
+	                }
+
+	            }
+
+	            return resultingFn
+	        },
+
+	        /*
+	         * @param {Array} args the array for which to create a cache key
+	         * @param {Number} [cacheParamNumber] the number of args to use for the cache key. Use this to limit the args that area actually used for the cache key
+	         */
+	        getCacheKey = function(args, cacheParamNumber){
+	            if (cacheParamNumber == null){
+	                cacheParamNumber = -1
+	            }
+
+	            var i        = 0,
+	                len      = Math.min(args.length, cacheParamNumber),
+	                cacheKey = [],
+	                it
+
+	            for ( ; i < len; i++){
+	                it = args[i]
+
+	                if (root.check.isPlainObject(it) || Array.isArray(it)){
+	                    cacheKey.push(JSON.stringify(it))
+	                } else {
+	                    cacheKey.push(String(it))
+	                }
+	            }
+
+	            return cacheKey.join(', ')
+	        },
+
+	        /*
+	         * @param {Function} fn - the function to cache results for
+	         * @param {Number} skipCacheParamNumber - the index of the boolean parameter that makes this function skip the caching and
+	         * actually return computed results.
+	         * @param {Function|String} cacheBucketMethod - a function or the name of a method on this object which makes caching distributed across multiple buckets.
+	         * If given, cached results will be searched into the cache corresponding to this bucket. If no result found, return computed result.
+	         *
+	         * For example this param is very useful when a function from a prototype is cached,
+	         * but we want to return the same cached results only for one object that inherits that proto, not for all objects. Thus, for example for Wes.Element,
+	         * we use the 'getId' cacheBucketMethod to indicate cached results for one object only.
+	         * @param {Function} [cacheKeyBuilder] A function to be used to compose the cache key
+	         *
+	         * @return {Function} a new function, which returns results from cache, if they are available, otherwise uses the given fn to compute the results.
+	         * This returned function has a 'clearCache' function attached, which clears the caching. If a parameter ( a bucket id) is  provided,
+	         * only clears the cache in the specified cache bucket.
+	         */
+	        cache = function(fn, config){
+	            config = config || {}
+
+	            var bucketCache = {},
+	                cache       = {},
+	                skipCacheParamNumber = config.skipCacheIndex,
+	                cacheBucketMethod    = config.cacheBucket,
+	                cacheKeyBuilder      = config.cacheKey,
+	                cacheArgsLength      = skipCacheParamNumber == null?
+	                                            fn.length:
+	                                            skipCacheParamNumber,
+	                cachingFn
+
+	            cachingFn = function(){
+	                var result,
+	                    skipCache = skipCacheParamNumber != null?
+	                                                arguments[skipCacheParamNumber] === true:
+	                                                false,
+	                    args = skipCache?
+	                                    SLICE.call(arguments, 0, cacheArgsLength):
+	                                    SLICE.call(arguments),
+
+	                    cacheBucketId = cacheBucketMethod != null?
+	                                        typeof cacheBucketMethod == 'function'?
+	                                            cacheBucketMethod():
+	                                            typeof this[cacheBucketMethod] == 'function'?
+	                                                this[cacheBucketMethod]():
+	                                                null
+	                                        :
+	                                        null,
+
+
+	                    cacheObject = cacheBucketId?
+	                                        bucketCache[cacheBucketId]:
+	                                        cache,
+
+	                    cacheKey = (cacheKeyBuilder || getCacheKey)(args, cacheArgsLength)
+
+	                if (cacheBucketId && !cacheObject){
+	                    cacheObject = bucketCache[cacheBucketId] = {}
+	                }
+
+	                if (skipCache || cacheObject[cacheKey] == null){
+	                    cacheObject[cacheKey] = result = fn.apply(this, args)
+	                } else {
+	                    result = cacheObject[cacheKey]
+	                }
+
+	                return result
+	            }
+
+	            /*
+	             * @param {String|Object|Number} [bucketId] the bucket for which to clear the cache. If none given, clears all the cache for this function.
+	             */
+	            cachingFn.clearCache = function(bucketId){
+	                if (bucketId){
+	                    delete bucketCache[String(bucketId)]
+	                } else {
+	                    cache = {}
+	                    bucketCache = {}
+	                }
+	            }
+
+	            /*
+	             *
+	             * @param {Array} cacheArgs The array of objects from which to create the cache key
+	             * @param {Number} [cacheParamNumber] A limit for the cache args that are actually used to compute the cache key.
+	             * @param {Function} [cacheKeyBuilder] The function to be used to compute the cache key from the given cacheArgs and cacheParamNumber
+	             */
+	            cachingFn.getCache = function(cacheArgs, cacheParamNumber, cacheKeyBuilder){
+	                return cachingFn.getBucketCache(null, cacheArgs, cacheParamNumber, cacheKeyBuilder)
+	            }
+
+	            /*
+	             *
+	             * @param {String} bucketId The id of the cache bucket from which to retrieve the cached value
+	             * @param {Array} cacheArgs The array of objects from which to create the cache key
+	             * @param {Number} [cacheParamNumber] A limit for the cache args that are actually used to compute the cache key.
+	             * @param {Function} [cacheKeyBuilder] The function to be used to compute the cache key from the given cacheArgs and cacheParamNumber
+	             */
+	            cachingFn.getBucketCache = function(bucketId, cacheArgs, cacheParamNumber, cacheKeyBuilder){
+	                var cacheObject = cache,
+	                    cacheKey = (cacheKeyBuilder || getCacheKey)(cacheArgs, cacheParamNumber)
+
+	                if (bucketId){
+	                    bucketId = String(bucketId);
+
+	                    cacheObject = bucketCache[bucketId] = bucketCache[bucketId] || {}
+	                }
+
+	                return cacheObject[cacheKey]
+	            }
+
+	            /*
+	             *
+	             * @param {Object} value The value to set in the cache
+	             * @param {Array} cacheArgs The array of objects from which to create the cache key
+	             * @param {Number} [cacheParamNumber] A limit for the cache args that are actually used to compute the cache key.
+	             * @param {Function} [cacheKeyBuilder] The function to be used to compute the cache key from the given cacheArgs and cacheParamNumber
+	             */
+	            cachingFn.setCache = function(value, cacheArgs, cacheParamNumber, cacheKeyBuilder){
+	                return cachingFn.setBucketCache(null, value, cacheArgs, cacheParamNumber, cacheKeyBuilder)
+	            }
+
+	            /*
+	             *
+	             * @param {String} bucketId The id of the cache bucket for which to set the cache value
+	             * @param {Object} value The value to set in the cache
+	             * @param {Array} cacheArgs The array of objects from which to create the cache key
+	             * @param {Number} [cacheParamNumber] A limit for the cache args that are actually used to compute the cache key.
+	             * @param {Function} [cacheKeyBuilder] The function to be used to compute the cache key from the given cacheArgs and cacheParamNumber
+	             */
+	            cachingFn.setBucketCache = function(bucketId, value, cacheArgs, cacheParamNumber, cacheKeyBuilder){
+
+	                var cacheObject = cache,
+	                    cacheKey = (cacheKeyBuilder || getCacheKey)(cacheArgs, cacheParamNumber)
+
+	                if (bucketId){
+	                    bucketId = String(bucketId)
+
+	                    cacheObject = bucketCache[bucketId] = bucketCache[bucketId] || {};
+	                }
+
+	                return cacheObject[cacheKey] = value
+	            }
+
+	            return cachingFn
+	        }
+
+	module.exports = {
+
+	    map: __webpack_require__(112),
+
+	    dot: __webpack_require__(113),
+
+	    maxArgs: __webpack_require__(114),
+
+	    /**
+	     * @method compose
+	     *
+	     * Example:
+	     *
+	     *      zippy.Function.compose(c, b, a)
+	     *
+	     * See {@link Function#compose}
+	     */
+	    compose: compose,
+
+	    /**
+	     * See {@link Function#self}
+	     */
+	    self: function(fn){
+	        return fn
+	    },
+
+	    /**
+	     * See {@link Function#buffer}
+	     */
+	    buffer: buffer,
+
+	    /**
+	     * See {@link Function#delay}
+	     */
+	    delay: delay,
+
+	    /**
+	     * See {@link Function#defer}
+	     * @param {Function} fn
+	     * @param {Object} scope
+	     */
+	    defer:defer,
+
+	    /**
+	     * See {@link Function#skipArgs}
+	     * @param {Function} fn
+	     * @param {Number} [count=0] how many args to skip when calling the resulting function
+	     * @return {Function} The function that will call the original fn without the first count args.
+	     */
+	    skipArgs: skipArgs,
+
+	    /**
+	     * See {@link Function#intercept}
+	     */
+	    intercept: function(fn, interceptedFn, withStopArgs){
+	        return intercept(interceptedFn, fn, withStopArgs)
+	    },
+
+	    /**
+	     * See {@link Function#throttle}
+	     */
+	    throttle: throttle,
+
+	    /**
+	     * See {@link Function#spread}
+	     */
+	    spread: spread,
+
+	    /**
+	     * See {@link Function#chain}
+	     */
+	    chain: function(fn, where, mainFn){
+	        return chain(where, mainFn, fn)
+	    },
+
+	    /**
+	     * See {@link Function#before}
+	     */
+	    before: function(fn, otherFn){
+	        return chain('before', otherFn, fn)
+	    },
+
+	    /**
+	     * See {@link Function#after}
+	     */
+	    after: function(fn, otherFn){
+	        return chain('after', otherFn, fn)
+	    },
+
+	    /**
+	     * See {@link Function#curry}
+	     */
+	    curry: curry,
+
+	    /**
+	     * See {@link Function#once}
+	     */
+	    once: once,
+
+	    /**
+	     * See {@link Function#bindArgs}
+	     */
+	    bindArgs: bindArgs,
+
+	    /**
+	     * See {@link Function#bindArgsArray}
+	     */
+	    bindArgsArray: bindArgsArray,
+
+	    /**
+	     * See {@link Function#lockArgs}
+	     */
+	    lockArgs: lockArgs,
+
+	    /**
+	     * See {@link Function#lockArgsArray}
+	     */
+	    lockArgsArray: lockArgsArray,
+
+	    bindFunctionsOf: bindFunctionsOf,
+
+	    find: find,
+
+	    findIndex: findIndex,
+
+	    newify: __webpack_require__(115)
+	}
+
+/***/ },
+/* 69 */
+/***/ function(module, exports, __webpack_require__) {
+
 	'use strict';
 
-	var Region = __webpack_require__(122)
+	var Region = __webpack_require__(116)
 
-	__webpack_require__(77)
-	__webpack_require__(78)
+	__webpack_require__(86)
+	__webpack_require__(87)
 
-	var COMPUTE_ALIGN_REGION = __webpack_require__(79)
+	var COMPUTE_ALIGN_REGION = __webpack_require__(88)
 
 	/**
 	 * region-align module exposes methods for aligning {@link Element} and {@link Region} instances
@@ -7306,1187 +8274,28 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = Region
 
 /***/ },
-/* 66 */
-/***/ function(module, exports, __webpack_require__) {
-
-	module.exports = function(){
-
-	    'use strict';
-
-	    var fns = {}
-
-	    return function(len){
-
-	        if ( ! fns [len ] ) {
-
-	            var args = []
-	            var i    = 0
-
-	            for (; i < len; i++ ) {
-	                args.push( 'a[' + i + ']')
-	            }
-
-	            fns[len] = new Function(
-	                            'c',
-	                            'a',
-	                            'return new c(' + args.join(',') + ')'
-	                        )
-	        }
-
-	        return fns[len]
-	    }
-
-	}()
-
-/***/ },
-/* 67 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/*
-		MIT License http://www.opensource.org/licenses/mit-license.php
-		Author Tobias Koppers @sokra
-	*/
-	var stylesInDom = {},
-		memoize = function(fn) {
-			var memo;
-			return function () {
-				if (typeof memo === "undefined") memo = fn.apply(this, arguments);
-				return memo;
-			};
-		},
-		isIE9 = memoize(function() {
-			return /msie 9\b/.test(window.navigator.userAgent.toLowerCase());
-		}),
-		getHeadElement = memoize(function () {
-			return document.head || document.getElementsByTagName("head")[0];
-		}),
-		singletonElement = null,
-		singletonCounter = 0;
-
-	module.exports = function(list, options) {
-		if(false) {
-			if(typeof document !== "object") throw new Error("The style-loader cannot be used in a non-browser environment");
-		}
-
-		options = options || {};
-		// Force single-tag solution on IE9, which has a hard limit on the # of <style>
-		// tags it will allow on a page
-		if (typeof options.singleton === "undefined") options.singleton = isIE9();
-
-		var styles = listToStyles(list);
-		addStylesToDom(styles, options);
-
-		return function update(newList) {
-			var mayRemove = [];
-			for(var i = 0; i < styles.length; i++) {
-				var item = styles[i];
-				var domStyle = stylesInDom[item.id];
-				domStyle.refs--;
-				mayRemove.push(domStyle);
-			}
-			if(newList) {
-				var newStyles = listToStyles(newList);
-				addStylesToDom(newStyles, options);
-			}
-			for(var i = 0; i < mayRemove.length; i++) {
-				var domStyle = mayRemove[i];
-				if(domStyle.refs === 0) {
-					for(var j = 0; j < domStyle.parts.length; j++)
-						domStyle.parts[j]();
-					delete stylesInDom[domStyle.id];
-				}
-			}
-		};
-	}
-
-	function addStylesToDom(styles, options) {
-		for(var i = 0; i < styles.length; i++) {
-			var item = styles[i];
-			var domStyle = stylesInDom[item.id];
-			if(domStyle) {
-				domStyle.refs++;
-				for(var j = 0; j < domStyle.parts.length; j++) {
-					domStyle.parts[j](item.parts[j]);
-				}
-				for(; j < item.parts.length; j++) {
-					domStyle.parts.push(addStyle(item.parts[j], options));
-				}
-			} else {
-				var parts = [];
-				for(var j = 0; j < item.parts.length; j++) {
-					parts.push(addStyle(item.parts[j], options));
-				}
-				stylesInDom[item.id] = {id: item.id, refs: 1, parts: parts};
-			}
-		}
-	}
-
-	function listToStyles(list) {
-		var styles = [];
-		var newStyles = {};
-		for(var i = 0; i < list.length; i++) {
-			var item = list[i];
-			var id = item[0];
-			var css = item[1];
-			var media = item[2];
-			var sourceMap = item[3];
-			var part = {css: css, media: media, sourceMap: sourceMap};
-			if(!newStyles[id])
-				styles.push(newStyles[id] = {id: id, parts: [part]});
-			else
-				newStyles[id].parts.push(part);
-		}
-		return styles;
-	}
-
-	function createStyleElement() {
-		var styleElement = document.createElement("style");
-		var head = getHeadElement();
-		styleElement.type = "text/css";
-		head.appendChild(styleElement);
-		return styleElement;
-	}
-
-	function addStyle(obj, options) {
-		var styleElement, update, remove;
-
-		if (options.singleton) {
-			var styleIndex = singletonCounter++;
-			styleElement = singletonElement || (singletonElement = createStyleElement());
-			update = applyToSingletonTag.bind(null, styleElement, styleIndex, false);
-			remove = applyToSingletonTag.bind(null, styleElement, styleIndex, true);
-		} else {
-			styleElement = createStyleElement();
-			update = applyToTag.bind(null, styleElement);
-			remove = function () {
-				styleElement.parentNode.removeChild(styleElement);
-			};
-		}
-
-		update(obj);
-
-		return function updateStyle(newObj) {
-			if(newObj) {
-				if(newObj.css === obj.css && newObj.media === obj.media && newObj.sourceMap === obj.sourceMap)
-					return;
-				update(obj = newObj);
-			} else {
-				remove();
-			}
-		};
-	}
-
-	function replaceText(source, id, replacement) {
-		var boundaries = ["/** >>" + id + " **/", "/** " + id + "<< **/"];
-		var start = source.lastIndexOf(boundaries[0]);
-		var wrappedReplacement = replacement
-			? (boundaries[0] + replacement + boundaries[1])
-			: "";
-		if (source.lastIndexOf(boundaries[0]) >= 0) {
-			var end = source.lastIndexOf(boundaries[1]) + boundaries[1].length;
-			return source.slice(0, start) + wrappedReplacement + source.slice(end);
-		} else {
-			return source + wrappedReplacement;
-		}
-	}
-
-	function applyToSingletonTag(styleElement, index, remove, obj) {
-		var css = remove ? "" : obj.css;
-
-		if(styleElement.styleSheet) {
-			styleElement.styleSheet.cssText = replaceText(styleElement.styleSheet.cssText, index, css);
-		} else {
-			var cssNode = document.createTextNode(css);
-			var childNodes = styleElement.childNodes;
-			if (childNodes[index]) styleElement.removeChild(childNodes[index]);
-			if (childNodes.length) {
-				styleElement.insertBefore(cssNode, childNodes[index]);
-			} else {
-				styleElement.appendChild(cssNode);
-			}
-		}
-	}
-
-	function applyToTag(styleElement, obj) {
-		var css = obj.css;
-		var media = obj.media;
-		var sourceMap = obj.sourceMap;
-
-		if(sourceMap && typeof btoa === "function") {
-			try {
-				css += "\n/*# sourceMappingURL=data:application/json;base64," + btoa(JSON.stringify(sourceMap)) + " */";
-				css = "@import url(\"data:stylesheet/css;base64," + btoa(css) + "\")";
-			} catch(e) {}
-		}
-
-		if(media) {
-			styleElement.setAttribute("media", media)
-		}
-
-		if(styleElement.styleSheet) {
-			styleElement.styleSheet.cssText = css;
-		} else {
-			while(styleElement.firstChild) {
-				styleElement.removeChild(styleElement.firstChild);
-			}
-			styleElement.appendChild(document.createTextNode(css));
-		}
-	}
-
-
-/***/ },
-/* 68 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict'
-
-	module.exports = {
-	    'numeric'  : __webpack_require__(81),
-	    'number'   : __webpack_require__(82),
-	    'int'      : __webpack_require__(83),
-	    'float'    : __webpack_require__(84),
-	    'string'   : __webpack_require__(85),
-	    'function' : __webpack_require__(86),
-	    'object'   : __webpack_require__(87),
-	    'arguments': __webpack_require__(88),
-	    'boolean'  : __webpack_require__(89),
-	    'date'     : __webpack_require__(90),
-	    'regexp'   : __webpack_require__(91),
-	    'array'    : __webpack_require__(92)
-	}
-
-/***/ },
-/* 69 */
-/***/ function(module, exports, __webpack_require__) {
-
-	    var setImmediate = function(fn){
-	        setTimeout(fn, 0)
-	    }
-	    var clearImmediate = clearTimeout
-	    /**
-	     * Utility methods for working with functions.
-	     * These methods augment the Function prototype.
-	     *
-	     * Using {@link #before}
-	     *
-	     *      function log(m){
-	     *          console.log(m)
-	     *      }
-	     *
-	     *      var doLog = function (m){
-	     *          console.log('LOG ')
-	     *      }.before(log)
-	     *
-	     *      doLog('test')
-	     *      //will log
-	     *      //"LOG "
-	     *      //and then
-	     *      //"test"
-	     *
-	     *
-	     *
-	     * Using {@link #bindArgs}:
-	     *
-	     *      //returns the sum of all arguments
-	     *      function add(){
-	     *          var sum = 0
-	     *          [].from(arguments).forEach(function(n){
-	     *              sum += n
-	     *          })
-	     *
-	     *          return sum
-	     *      }
-	     *
-	     *      var add1 = add.bindArgs(1)
-	     *
-	     *      add1(2, 3) == 6
-	     *
-	     * Using {@link #lockArgs}:
-	     *
-	     *      function add(){
-	     *          var sum = 0
-	     *          [].from(arguments).forEach(function(n){
-	     *              sum += n
-	     *          })
-	     *
-	     *          return sum
-	     *      }
-	     *
-	     *      var add1_2   = add.lockArgs(1,2)
-	     *      var add1_2_3 = add.lockArgs(1,2,3)
-	     *
-	     *      add1_2(3,4)  == 3 //args are locked to only be 1 and 2
-	     *      add1_2_3(6)  == 6 //args are locked to only be 1, 2 and 3
-	     *
-	     *
-	     *
-	     * Using {@link #compose}:
-	     *
-	     *      function multiply(a,b){
-	     *          return a* b
-	     *      }
-	     *
-	     *      var multiply2 = multiply.curry()(2)
-	     *
-	     *      Function.compose(multiply2( add(5,6) )) == multiply2( add(5,6) )
-	     *
-	     *
-	     * @class Function
-	     */
-
-	    var SLICE = Array.prototype.slice
-
-	    var curry = __webpack_require__(109),
-
-	        findFn = function(fn, target, onFound){
-	            // if (typeof target.find == 'function'){
-	            //     return target.find(fn)
-	            // }
-
-	            onFound = typeof onFound == 'function'?
-	                        onFound:
-	                        function(found, key, target){
-	                            return found
-	                        }
-
-	            if (Array.isArray(target)){
-	                var i   = 0
-	                var len = target.length
-	                var it
-
-	                for(; i < len; i++){
-	                    it = target[i]
-	                    if (fn(it, i, target)){
-	                        return onFound(it, i, target)
-	                    }
-	                }
-
-	                return
-	            }
-
-	            if (typeof target == 'object'){
-	                var keys = Object.keys(target)
-	                var i = 0
-	                var len = keys.length
-	                var k
-	                var it
-
-	                for( ; i < len; i++){
-	                    k  = keys[i]
-	                    it = target[k]
-
-	                    if (fn(it, k, target)){
-	                        return onFound(it, k, target)
-	                    }
-	                }
-	            }
-	        },
-
-	        find = curry(findFn, 2),
-
-	        findIndex = curry(function(fn, target){
-	            return findFn(fn, target, function(it, i){
-	                return i
-	            })
-	        }),
-
-	        bindFunctionsOf = function(obj) {
-	            Object.keys(obj).forEach(function(k){
-	                if (typeof obj[k] == 'function'){
-	                    obj[k] = obj[k].bind(obj)
-	                }
-	            })
-
-	            return obj
-	        },
-
-	        /*
-	         * @param {Function...} an enumeration of functions, each consuming the result of the following function.
-	         *
-	         * For example: compose(c, b, a)(1,4) == c(b(a(1,4)))
-	         *
-	         * @return the result of the first function in the enumeration
-	         */
-	        compose = __webpack_require__(110),
-
-	        chain = __webpack_require__(111),
-
-	        once = __webpack_require__(112),
-
-	        bindArgsArray = __webpack_require__(113),
-
-	        bindArgs = __webpack_require__(114),
-
-	        lockArgsArray = __webpack_require__(115),
-
-	        lockArgs = __webpack_require__(116),
-
-	        skipArgs = function(fn, count){
-	            return function(){
-	                var args = SLICE.call(arguments, count || 0)
-
-	                return fn.apply(this, args)
-	            }
-	        },
-
-	        intercept = function(interceptedFn, interceptingFn, withStopArg){
-
-	            return function(){
-	                var args    = [].from(arguments),
-	                    stopArg = { stop: false }
-
-	                if (withStopArg){
-	                    args.push(stopArg)
-	                }
-
-	                var result = interceptingFn.apply(this, args)
-
-	                if (withStopArg){
-	                    if (stopArg.stop === true){
-	                        return result
-	                    }
-
-	                } else {
-	                    if (result === false){
-	                        return result
-	                    }
-	                }
-
-	                //the interception was not stopped
-	                return interceptedFn.apply(this, arguments)
-	            }
-
-	        },
-
-	        delay = function(fn, delay, scope){
-
-	            var delayIsNumber = delay * 1 == delay
-
-	            if (arguments.length == 2 && !delayIsNumber){
-	                scope = delay
-	                delay = 0
-	            } else {
-	                if (!delayIsNumber){
-	                    delay = 0
-	                }
-	            }
-
-	            return function(){
-	                var self = scope || this,
-	                    args = arguments
-
-	                if (delay < 0){
-	                    fn.apply(self, args)
-	                    return
-	                }
-
-	                if (delay || !setImmediate){
-	                    setTimeout(function(){
-	                        fn.apply(self, args)
-	                    }, delay)
-
-	                } else {
-	                    setImmediate(function(){
-	                        fn.apply(self, args)
-	                    })
-	                }
-	            }
-	        },
-
-	        defer = function(fn, scope){
-	            return delay(fn, 0, scope)
-	        },
-
-	        buffer = function(fn, delay, scope){
-
-	            var timeoutId = -1
-
-	            return function(){
-
-	                var self = scope || this,
-	                    args = arguments
-
-	                if (delay < 0){
-	                    fn.apply(self, args)
-	                    return
-	                }
-
-	                var withTimeout = delay || !setImmediate,
-	                    clearFn = withTimeout?
-	                                clearTimeout:
-	                                clearImmediate,
-	                    setFn   = withTimeout?
-	                                setTimeout:
-	                                setImmediate
-
-	                if (timeoutId !== -1){
-	                    clearFn(timeoutId)
-	                }
-
-	                timeoutId = setFn(function(){
-	                    fn.apply(self, args)
-	                    self = null
-	                }, delay)
-
-	            }
-
-	        },
-
-	        throttle = function(fn, delay, scope) {
-	            var timeoutId = -1,
-	                self,
-	                args
-
-	            return function () {
-
-	                self = scope || this
-	                args = arguments
-
-	                if (timeoutId !== -1) {
-	                    //the function was called once again in the delay interval
-	                } else {
-	                    timeoutId = setTimeout(function () {
-	                        fn.apply(self, args)
-
-	                        self = null
-	                        timeoutId = -1
-	                    }, delay)
-	                }
-
-	            }
-
-	        },
-
-	        spread = function(fn, delay, scope){
-
-	            var timeoutId       = -1
-	            var callCount       = 0
-	            var executeCount    = 0
-	            var nextArgs        = {}
-	            var increaseCounter = true
-	            var resultingFnUnbound
-	            var resultingFn
-
-	            resultingFn = resultingFnUnbound = function(){
-
-	                var args = arguments,
-	                    self = scope || this
-
-	                if (increaseCounter){
-	                    nextArgs[callCount++] = {args: args, scope: self}
-	                }
-
-	                if (timeoutId !== -1){
-	                    //the function was called once again in the delay interval
-	                } else {
-	                    timeoutId = setTimeout(function(){
-	                        fn.apply(self, args)
-
-	                        timeoutId = -1
-	                        executeCount++
-
-	                        if (callCount !== executeCount){
-	                            resultingFn = bindArgsArray(resultingFnUnbound, nextArgs[executeCount].args).bind(nextArgs[executeCount].scope)
-	                            delete nextArgs[executeCount]
-
-	                            increaseCounter = false
-	                            resultingFn.apply(self)
-	                            increaseCounter = true
-	                        } else {
-	                            nextArgs = {}
-	                        }
-	                    }, delay)
-	                }
-
-	            }
-
-	            return resultingFn
-	        },
-
-	        /*
-	         * @param {Array} args the array for which to create a cache key
-	         * @param {Number} [cacheParamNumber] the number of args to use for the cache key. Use this to limit the args that area actually used for the cache key
-	         */
-	        getCacheKey = function(args, cacheParamNumber){
-	            if (cacheParamNumber == null){
-	                cacheParamNumber = -1
-	            }
-
-	            var i        = 0,
-	                len      = Math.min(args.length, cacheParamNumber),
-	                cacheKey = [],
-	                it
-
-	            for ( ; i < len; i++){
-	                it = args[i]
-
-	                if (root.check.isPlainObject(it) || Array.isArray(it)){
-	                    cacheKey.push(JSON.stringify(it))
-	                } else {
-	                    cacheKey.push(String(it))
-	                }
-	            }
-
-	            return cacheKey.join(', ')
-	        },
-
-	        /*
-	         * @param {Function} fn - the function to cache results for
-	         * @param {Number} skipCacheParamNumber - the index of the boolean parameter that makes this function skip the caching and
-	         * actually return computed results.
-	         * @param {Function|String} cacheBucketMethod - a function or the name of a method on this object which makes caching distributed across multiple buckets.
-	         * If given, cached results will be searched into the cache corresponding to this bucket. If no result found, return computed result.
-	         *
-	         * For example this param is very useful when a function from a prototype is cached,
-	         * but we want to return the same cached results only for one object that inherits that proto, not for all objects. Thus, for example for Wes.Element,
-	         * we use the 'getId' cacheBucketMethod to indicate cached results for one object only.
-	         * @param {Function} [cacheKeyBuilder] A function to be used to compose the cache key
-	         *
-	         * @return {Function} a new function, which returns results from cache, if they are available, otherwise uses the given fn to compute the results.
-	         * This returned function has a 'clearCache' function attached, which clears the caching. If a parameter ( a bucket id) is  provided,
-	         * only clears the cache in the specified cache bucket.
-	         */
-	        cache = function(fn, config){
-	            config = config || {}
-
-	            var bucketCache = {},
-	                cache       = {},
-	                skipCacheParamNumber = config.skipCacheIndex,
-	                cacheBucketMethod    = config.cacheBucket,
-	                cacheKeyBuilder      = config.cacheKey,
-	                cacheArgsLength      = skipCacheParamNumber == null?
-	                                            fn.length:
-	                                            skipCacheParamNumber,
-	                cachingFn
-
-	            cachingFn = function(){
-	                var result,
-	                    skipCache = skipCacheParamNumber != null?
-	                                                arguments[skipCacheParamNumber] === true:
-	                                                false,
-	                    args = skipCache?
-	                                    SLICE.call(arguments, 0, cacheArgsLength):
-	                                    SLICE.call(arguments),
-
-	                    cacheBucketId = cacheBucketMethod != null?
-	                                        typeof cacheBucketMethod == 'function'?
-	                                            cacheBucketMethod():
-	                                            typeof this[cacheBucketMethod] == 'function'?
-	                                                this[cacheBucketMethod]():
-	                                                null
-	                                        :
-	                                        null,
-
-
-	                    cacheObject = cacheBucketId?
-	                                        bucketCache[cacheBucketId]:
-	                                        cache,
-
-	                    cacheKey = (cacheKeyBuilder || getCacheKey)(args, cacheArgsLength)
-
-	                if (cacheBucketId && !cacheObject){
-	                    cacheObject = bucketCache[cacheBucketId] = {}
-	                }
-
-	                if (skipCache || cacheObject[cacheKey] == null){
-	                    cacheObject[cacheKey] = result = fn.apply(this, args)
-	                } else {
-	                    result = cacheObject[cacheKey]
-	                }
-
-	                return result
-	            }
-
-	            /*
-	             * @param {String|Object|Number} [bucketId] the bucket for which to clear the cache. If none given, clears all the cache for this function.
-	             */
-	            cachingFn.clearCache = function(bucketId){
-	                if (bucketId){
-	                    delete bucketCache[String(bucketId)]
-	                } else {
-	                    cache = {}
-	                    bucketCache = {}
-	                }
-	            }
-
-	            /*
-	             *
-	             * @param {Array} cacheArgs The array of objects from which to create the cache key
-	             * @param {Number} [cacheParamNumber] A limit for the cache args that are actually used to compute the cache key.
-	             * @param {Function} [cacheKeyBuilder] The function to be used to compute the cache key from the given cacheArgs and cacheParamNumber
-	             */
-	            cachingFn.getCache = function(cacheArgs, cacheParamNumber, cacheKeyBuilder){
-	                return cachingFn.getBucketCache(null, cacheArgs, cacheParamNumber, cacheKeyBuilder)
-	            }
-
-	            /*
-	             *
-	             * @param {String} bucketId The id of the cache bucket from which to retrieve the cached value
-	             * @param {Array} cacheArgs The array of objects from which to create the cache key
-	             * @param {Number} [cacheParamNumber] A limit for the cache args that are actually used to compute the cache key.
-	             * @param {Function} [cacheKeyBuilder] The function to be used to compute the cache key from the given cacheArgs and cacheParamNumber
-	             */
-	            cachingFn.getBucketCache = function(bucketId, cacheArgs, cacheParamNumber, cacheKeyBuilder){
-	                var cacheObject = cache,
-	                    cacheKey = (cacheKeyBuilder || getCacheKey)(cacheArgs, cacheParamNumber)
-
-	                if (bucketId){
-	                    bucketId = String(bucketId);
-
-	                    cacheObject = bucketCache[bucketId] = bucketCache[bucketId] || {}
-	                }
-
-	                return cacheObject[cacheKey]
-	            }
-
-	            /*
-	             *
-	             * @param {Object} value The value to set in the cache
-	             * @param {Array} cacheArgs The array of objects from which to create the cache key
-	             * @param {Number} [cacheParamNumber] A limit for the cache args that are actually used to compute the cache key.
-	             * @param {Function} [cacheKeyBuilder] The function to be used to compute the cache key from the given cacheArgs and cacheParamNumber
-	             */
-	            cachingFn.setCache = function(value, cacheArgs, cacheParamNumber, cacheKeyBuilder){
-	                return cachingFn.setBucketCache(null, value, cacheArgs, cacheParamNumber, cacheKeyBuilder)
-	            }
-
-	            /*
-	             *
-	             * @param {String} bucketId The id of the cache bucket for which to set the cache value
-	             * @param {Object} value The value to set in the cache
-	             * @param {Array} cacheArgs The array of objects from which to create the cache key
-	             * @param {Number} [cacheParamNumber] A limit for the cache args that are actually used to compute the cache key.
-	             * @param {Function} [cacheKeyBuilder] The function to be used to compute the cache key from the given cacheArgs and cacheParamNumber
-	             */
-	            cachingFn.setBucketCache = function(bucketId, value, cacheArgs, cacheParamNumber, cacheKeyBuilder){
-
-	                var cacheObject = cache,
-	                    cacheKey = (cacheKeyBuilder || getCacheKey)(cacheArgs, cacheParamNumber)
-
-	                if (bucketId){
-	                    bucketId = String(bucketId)
-
-	                    cacheObject = bucketCache[bucketId] = bucketCache[bucketId] || {};
-	                }
-
-	                return cacheObject[cacheKey] = value
-	            }
-
-	            return cachingFn
-	        }
-
-	module.exports = {
-
-	    map: __webpack_require__(117),
-
-	    dot: __webpack_require__(118),
-
-	    maxArgs: __webpack_require__(119),
-
-	    /**
-	     * @method compose
-	     *
-	     * Example:
-	     *
-	     *      zippy.Function.compose(c, b, a)
-	     *
-	     * See {@link Function#compose}
-	     */
-	    compose: compose,
-
-	    /**
-	     * See {@link Function#self}
-	     */
-	    self: function(fn){
-	        return fn
-	    },
-
-	    /**
-	     * See {@link Function#buffer}
-	     */
-	    buffer: buffer,
-
-	    /**
-	     * See {@link Function#delay}
-	     */
-	    delay: delay,
-
-	    /**
-	     * See {@link Function#defer}
-	     * @param {Function} fn
-	     * @param {Object} scope
-	     */
-	    defer:defer,
-
-	    /**
-	     * See {@link Function#skipArgs}
-	     * @param {Function} fn
-	     * @param {Number} [count=0] how many args to skip when calling the resulting function
-	     * @return {Function} The function that will call the original fn without the first count args.
-	     */
-	    skipArgs: skipArgs,
-
-	    /**
-	     * See {@link Function#intercept}
-	     */
-	    intercept: function(fn, interceptedFn, withStopArgs){
-	        return intercept(interceptedFn, fn, withStopArgs)
-	    },
-
-	    /**
-	     * See {@link Function#throttle}
-	     */
-	    throttle: throttle,
-
-	    /**
-	     * See {@link Function#spread}
-	     */
-	    spread: spread,
-
-	    /**
-	     * See {@link Function#chain}
-	     */
-	    chain: function(fn, where, mainFn){
-	        return chain(where, mainFn, fn)
-	    },
-
-	    /**
-	     * See {@link Function#before}
-	     */
-	    before: function(fn, otherFn){
-	        return chain('before', otherFn, fn)
-	    },
-
-	    /**
-	     * See {@link Function#after}
-	     */
-	    after: function(fn, otherFn){
-	        return chain('after', otherFn, fn)
-	    },
-
-	    /**
-	     * See {@link Function#curry}
-	     */
-	    curry: curry,
-
-	    /**
-	     * See {@link Function#once}
-	     */
-	    once: once,
-
-	    /**
-	     * See {@link Function#bindArgs}
-	     */
-	    bindArgs: bindArgs,
-
-	    /**
-	     * See {@link Function#bindArgsArray}
-	     */
-	    bindArgsArray: bindArgsArray,
-
-	    /**
-	     * See {@link Function#lockArgs}
-	     */
-	    lockArgs: lockArgs,
-
-	    /**
-	     * See {@link Function#lockArgsArray}
-	     */
-	    lockArgsArray: lockArgsArray,
-
-	    bindFunctionsOf: bindFunctionsOf,
-
-	    find: find,
-
-	    findIndex: findIndex,
-
-	    newify: __webpack_require__(120)
-	}
-
-/***/ },
 /* 70 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
-	var HAS_OWN       = Object.prototype.hasOwnProperty
-	var STR_OBJECT    = 'object'
-
-	/**
-	 * Copies all properties from source to destination
-	 *
-	 *      copy({name: 'jon',age:5}, this);
-	 *      // => this will have the 'name' and 'age' properties set to 'jon' and 5 respectively
-	 *
-	 * @param {Object} source
-	 * @param {Object} destination
-	 *
-	 * @return {Object} destination
-	 */
-	module.exports = function(source, destination){
-
-	    destination = destination || {}
-
-	    if (source != null && typeof source === STR_OBJECT ){
-
-	        for (var i in source) if ( HAS_OWN.call(source, i) ) {
-	            destination[i] = source[i]
-	        }
-
-	    }
-
-	    return destination
+	module.exports = {
+	    'numeric'  : __webpack_require__(89),
+	    'number'   : __webpack_require__(90),
+	    'int'      : __webpack_require__(91),
+	    'float'    : __webpack_require__(92),
+	    'string'   : __webpack_require__(93),
+	    'function' : __webpack_require__(94),
+	    'object'   : __webpack_require__(95),
+	    'arguments': __webpack_require__(96),
+	    'boolean'  : __webpack_require__(97),
+	    'date'     : __webpack_require__(98),
+	    'regexp'   : __webpack_require__(99),
+	    'array'    : __webpack_require__(100)
 	}
 
 /***/ },
 /* 71 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict'
-
-	var HAS_OWN       = Object.prototype.hasOwnProperty
-	var STR_OBJECT    = 'object'
-	var STR_UNDEFINED = 'undefined'
-
-	/**
-	 * Copies all properties from source to destination, if the property does not exist into the destination
-	 *
-	 *      copyIf({name: 'jon',age:5}, {age:7})
-	 *      // => { name: 'jon', age: 7}
-	 *
-	 * @param {Object} source
-	 * @param {Object} destination
-	 *
-	 * @return {Object} destination
-	 */
-	module.exports = function(source, destination){
-	    destination = destination || {}
-
-	    if (source != null && typeof source === STR_OBJECT){
-
-	        for (var i in source) if ( HAS_OWN.call(source, i) && (typeof destination[i] === STR_UNDEFINED) ) {
-
-	            destination[i] = source[i]
-
-	        }
-	    }
-
-	    return destination
-	}
-
-/***/ },
-/* 72 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict'
-
-	var STR_UNDEFINED = 'undefined'
-
-	/**
-	 * Copies all properties named in the list, from source to destination
-	 *
-	 *      copyList({name: 'jon',age:5, year: 2006}, {}, ['name','age'])
-	 *      // => {name: 'jon', age: 5}
-	 *
-	 * @param {Object} source
-	 * @param {Object} destination
-	 * @param {Array} list the array with the names of the properties to copy
-	 *
-	 * @return {Object} destination
-	 */
-	module.exports = function(source, destination, list){
-	    if (arguments.length < 3){
-	        list = destination
-	        destination = null
-	    }
-
-	    destination = destination || {}
-	    list        = list || Object.keys(source)
-
-	    var i   = 0
-	    var len = list.length
-	    var propName
-
-	    for ( ; i < len; i++ ){
-	        propName = list[i]
-
-	        if ( typeof source[propName] !== STR_UNDEFINED ) {
-	            destination[list[i]] = source[list[i]]
-	        }
-	    }
-
-	    return destination
-	}
-
-/***/ },
-/* 73 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict'
-
-	var STR_UNDEFINED = 'undefined'
-
-	/**
-	 * Copies all properties named in the list, from source to destination, if the property does not exist into the destination
-	 *
-	 *      copyListIf({name: 'jon',age:5, year: 2006}, {age: 10}, ['name','age'])
-	 *      // => {name: 'jon', age: 10}
-	 *
-	 * @param {Object} source
-	 * @param {Object} destination
-	 * @param {Array} list the array with the names of the properties to copy
-	 *
-	 * @return {Object} destination
-	 */
-	module.exports = function(source, destination, list){
-	    if (arguments.length < 3){
-	        list = destination
-	        destination = null
-	    }
-
-	    destination = destination || {}
-	    list        = list || Object.keys(source)
-
-	    var i   = 0
-	    var len = list.length
-	    var propName
-
-	    for ( ; i < len ; i++ ){
-	        propName = list[i]
-	        if (
-	                (typeof source[propName]      !== STR_UNDEFINED) &&
-	                (typeof destination[propName] === STR_UNDEFINED)
-	            ){
-	            destination[propName] = source[propName]
-	        }
-	    }
-
-	    return destination
-	}
-
-/***/ },
-/* 74 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict'
-
-	var STR_UNDEFINED = 'undefined'
-	var STR_OBJECT    = 'object'
-	var HAS_OWN       = Object.prototype.hasOwnProperty
-
-	var copyList = __webpack_require__(72)
-
-	/**
-	 * Copies all properties named in the namedKeys, from source to destination
-	 *
-	 *      copyKeys({name: 'jon',age:5, year: 2006, date: '2010/05/12'}, {}, {name:1 ,age: true, year: 'theYear'})
-	 *      // => {name: 'jon', age: 5, theYear: 2006}
-	 *
-	 * @param {Object} source
-	 * @param {Object} destination
-	 * @param {Object} namedKeys an object with keys denoting the properties to be copied
-	 *
-	 * @return {Object} destination
-	 */
-	module.exports = function(source, destination, namedKeys){
-	    if (arguments.length < 3 ){
-	        namedKeys = destination
-	        destination = null
-	    }
-
-	    destination = destination || {}
-
-	    if (!namedKeys || Array.isArray(namedKeys)){
-	        return copyList(source, destination, namedKeys)
-	    }
-
-	    if (
-	           source != null && typeof source    === STR_OBJECT &&
-	        namedKeys != null && typeof namedKeys === STR_OBJECT
-	    ) {
-	        var typeOfNamedProperty
-	        var namedPropertyValue
-
-	        for  (var propName in namedKeys) if ( HAS_OWN.call(namedKeys, propName) ) {
-	            namedPropertyValue  = namedKeys[propName]
-	            typeOfNamedProperty = typeof namedPropertyValue
-
-	            if (typeof source[propName] !== STR_UNDEFINED){
-	                destination[typeOfNamedProperty == 'string'? namedPropertyValue : propName] = source[propName]
-	            }
-	        }
-	    }
-
-	    return destination
-	}
-
-/***/ },
-/* 75 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict'
-
-	var STR_UNDEFINED = 'undefined'
-	var STR_OBJECT    = 'object'
-	var HAS_OWN       = Object.prototype.hasOwnProperty
-
-	var copyListIf = __webpack_require__(73)
-
-	/**
-	 * Copies all properties named in the namedKeys, from source to destination,
-	 * but only if the property does not already exist in the destination object
-	 *
-	 *      copyKeysIf({name: 'jon',age:5, year: 2006}, {aname: 'test'}, {name:'aname' ,age: true})
-	 *      // => {aname: 'test', age: 5}
-	 *
-	 * @param {Object} source
-	 * @param {Object} destination
-	 * @param {Object} namedKeys an object with keys denoting the properties to be copied
-	 *
-	 * @return {Object} destination
-	 */
-	module.exports = function(source, destination, namedKeys){
-	    if (arguments.length < 3 ){
-	        namedKeys = destination
-	        destination = null
-	    }
-
-	    destination = destination || {}
-
-	    if (!namedKeys || Array.isArray(namedKeys)){
-	        return copyListIf(source, destination, namedKeys)
-	    }
-
-	    if (
-	               source != null && typeof source    === STR_OBJECT &&
-	            namedKeys != null && typeof namedKeys === STR_OBJECT
-	        ) {
-
-	            var typeOfNamedProperty
-	            var namedPropertyValue
-	            var newPropertyName
-
-	            for (var propName in namedKeys) if ( HAS_OWN.call(namedKeys, propName) ) {
-
-	                namedPropertyValue  = namedKeys[propName]
-	                typeOfNamedProperty = typeof namedPropertyValue
-	                newPropertyName     = typeOfNamedProperty == 'string'? namedPropertyValue : propName
-
-	                if (
-	                        typeof      source[propName]        !== STR_UNDEFINED &&
-	                        typeof destination[newPropertyName] === STR_UNDEFINED
-	                    ) {
-	                    destination[newPropertyName] = source[propName]
-	                }
-
-	            }
-	        }
-
-	    return destination
-	}
-
-/***/ },
-/* 76 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(Buffer) {/*!
@@ -8496,9 +8305,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	 * @license  MIT
 	 */
 
-	var base64 = __webpack_require__(108)
-	var ieee754 = __webpack_require__(80)
-	var isArray = __webpack_require__(93)
+	var base64 = __webpack_require__(103)
+	var ieee754 = __webpack_require__(84)
+	var isArray = __webpack_require__(85)
 
 	exports.Buffer = Buffer
 	exports.SlowBuffer = Buffer
@@ -9542,7 +9351,147 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }
 	}
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(76).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(71).Buffer))
+
+/***/ },
+/* 72 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict'
+
+	function curry(fn, n){
+
+	    if (typeof n !== 'number'){
+	        n = fn.length
+	    }
+
+	    function getCurryClosure(prevArgs){
+
+	        function curryClosure() {
+
+	            var len  = arguments.length
+	            var args = [].concat(prevArgs)
+
+	            if (len){
+	                args.push.apply(args, arguments)
+	            }
+
+	            if (args.length < n){
+	                return getCurryClosure(args)
+	            }
+
+	            return fn.apply(this, args)
+	        }
+
+	        return curryClosure
+	    }
+
+	    return getCurryClosure([])
+	}
+
+	module.exports = curry
+
+/***/ },
+/* 73 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict'
+
+	function composeTwo(f, g) {
+	    return function () {
+	        return f(g.apply(this, arguments))
+	    }
+	}
+
+	/*
+	 * @param {Function...} an enumeration of functions, each consuming the result of the following function.
+	 *
+	 * For example: compose(c, b, a)(1,4) == c(b(a(1,4)))
+	 *
+	 * @return the result of the first function in the enumeration
+	 */
+	module.exports = function(){
+
+	    var args = arguments
+	    var len  = args.length
+	    var i    = 0
+	    var f    = args[0]
+
+	    while (++i < len) {
+	        f = composeTwo(f, args[i])
+	    }
+
+	    return f
+	}
+
+/***/ },
+/* 74 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict'
+
+	function chain(where, fn, secondFn){
+
+	    return function(){
+	        if (where === 'before'){
+	            secondFn.apply(this, arguments)
+	        }
+
+	        var result = fn.apply(this, arguments)
+
+	        if (where !== 'before'){
+	            secondFn.apply(this, arguments)
+	        }
+
+	        return result
+	    }
+	}
+
+	module.exports = chain
+
+/***/ },
+/* 75 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use once'
+
+	function once(fn, scope){
+
+	    var called
+	    var result
+
+	    return function(){
+	        if (called){
+	            return result
+	        }
+
+	        called = true
+
+	        return result = fn.apply(scope || this, arguments)
+	    }
+	}
+
+	module.exports = once
+
+/***/ },
+/* 76 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict'
+
+	var SLICE = Array.prototype.slice
+
+	module.exports = function(fn, args){
+	    return function(){
+	        var thisArgs = SLICE.call(args || [])
+
+	        if (arguments.length){
+	            thisArgs.push.apply(thisArgs, arguments)
+	        }
+
+	        return fn.apply(this, thisArgs)
+	    }
+	}
 
 /***/ },
 /* 77 */
@@ -9550,7 +9499,233 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict'
 
-	var Region = __webpack_require__(122)
+	var SLICE = Array.prototype.slice
+	var bindArgsArray = __webpack_require__(76)
+
+	module.exports = function(fn){
+	    return bindArgsArray(fn, SLICE.call(arguments,1))
+	}
+
+/***/ },
+/* 78 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict'
+
+	var SLICE = Array.prototype.slice
+
+	module.exports = function(fn, args){
+
+	    return function(){
+	        if (!Array.isArray(args)){
+	            args = SLICE.call(args || [])
+	        }
+
+	        return fn.apply(this, args)
+	    }
+	}
+
+/***/ },
+/* 79 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict'
+
+	var SLICE = Array.prototype.slice
+	var lockArgsArray = __webpack_require__(78)
+
+	module.exports = function(fn){
+	    return lockArgsArray(fn, SLICE.call(arguments, 1))
+	}
+
+/***/ },
+/* 80 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict'
+
+	var curry = __webpack_require__(72)
+
+	module.exports = curry(function(fn, value){
+	    return value != undefined && typeof value.map?
+	            value.map(fn):
+	            fn(value)
+	})
+
+/***/ },
+/* 81 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict'
+
+	var curry = __webpack_require__(72)
+
+	module.exports = curry(function(prop, value){
+	    return value != undefined? value[prop]: undefined
+	})
+
+/***/ },
+/* 82 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict'
+
+	var SLICE = Array.prototype.slice
+	var curry = __webpack_require__(72)
+
+	module.exports = function(fn, count){
+	    return function(){
+	        return fn.apply(this, SLICE.call(arguments, 0, count))
+	    }
+	}
+
+/***/ },
+/* 83 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict'
+
+	var newify = __webpack_require__(118)
+	var curry  = __webpack_require__(72)
+
+	module.exports = curry(newify)
+
+/***/ },
+/* 84 */
+/***/ function(module, exports, __webpack_require__) {
+
+	exports.read = function(buffer, offset, isLE, mLen, nBytes) {
+	  var e, m,
+	      eLen = nBytes * 8 - mLen - 1,
+	      eMax = (1 << eLen) - 1,
+	      eBias = eMax >> 1,
+	      nBits = -7,
+	      i = isLE ? (nBytes - 1) : 0,
+	      d = isLE ? -1 : 1,
+	      s = buffer[offset + i];
+
+	  i += d;
+
+	  e = s & ((1 << (-nBits)) - 1);
+	  s >>= (-nBits);
+	  nBits += eLen;
+	  for (; nBits > 0; e = e * 256 + buffer[offset + i], i += d, nBits -= 8);
+
+	  m = e & ((1 << (-nBits)) - 1);
+	  e >>= (-nBits);
+	  nBits += mLen;
+	  for (; nBits > 0; m = m * 256 + buffer[offset + i], i += d, nBits -= 8);
+
+	  if (e === 0) {
+	    e = 1 - eBias;
+	  } else if (e === eMax) {
+	    return m ? NaN : ((s ? -1 : 1) * Infinity);
+	  } else {
+	    m = m + Math.pow(2, mLen);
+	    e = e - eBias;
+	  }
+	  return (s ? -1 : 1) * m * Math.pow(2, e - mLen);
+	};
+
+	exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
+	  var e, m, c,
+	      eLen = nBytes * 8 - mLen - 1,
+	      eMax = (1 << eLen) - 1,
+	      eBias = eMax >> 1,
+	      rt = (mLen === 23 ? Math.pow(2, -24) - Math.pow(2, -77) : 0),
+	      i = isLE ? 0 : (nBytes - 1),
+	      d = isLE ? 1 : -1,
+	      s = value < 0 || (value === 0 && 1 / value < 0) ? 1 : 0;
+
+	  value = Math.abs(value);
+
+	  if (isNaN(value) || value === Infinity) {
+	    m = isNaN(value) ? 1 : 0;
+	    e = eMax;
+	  } else {
+	    e = Math.floor(Math.log(value) / Math.LN2);
+	    if (value * (c = Math.pow(2, -e)) < 1) {
+	      e--;
+	      c *= 2;
+	    }
+	    if (e + eBias >= 1) {
+	      value += rt / c;
+	    } else {
+	      value += rt * Math.pow(2, 1 - eBias);
+	    }
+	    if (value * c >= 2) {
+	      e++;
+	      c /= 2;
+	    }
+
+	    if (e + eBias >= eMax) {
+	      m = 0;
+	      e = eMax;
+	    } else if (e + eBias >= 1) {
+	      m = (value * c - 1) * Math.pow(2, mLen);
+	      e = e + eBias;
+	    } else {
+	      m = value * Math.pow(2, eBias - 1) * Math.pow(2, mLen);
+	      e = 0;
+	    }
+	  }
+
+	  for (; mLen >= 8; buffer[offset + i] = m & 0xff, i += d, m /= 256, mLen -= 8);
+
+	  e = (e << mLen) | m;
+	  eLen += mLen;
+	  for (; eLen > 0; buffer[offset + i] = e & 0xff, i += d, e /= 256, eLen -= 8);
+
+	  buffer[offset + i - d] |= s * 128;
+	};
+
+
+/***/ },
+/* 85 */
+/***/ function(module, exports, __webpack_require__) {
+
+	
+	/**
+	 * isArray
+	 */
+
+	var isArray = Array.isArray;
+
+	/**
+	 * toString
+	 */
+
+	var str = Object.prototype.toString;
+
+	/**
+	 * Whether or not the given `val`
+	 * is an array.
+	 *
+	 * example:
+	 *
+	 *        isArray([]);
+	 *        // > true
+	 *        isArray(arguments);
+	 *        // > false
+	 *        isArray('');
+	 *        // > false
+	 *
+	 * @param {mixed} val
+	 * @return {bool}
+	 */
+
+	module.exports = isArray || function (val) {
+	  return !! val && '[object Array]' == str.call(val);
+	};
+
+
+/***/ },
+/* 86 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict'
+
+	var Region = __webpack_require__(116)
 
 	/**
 	 * @static
@@ -9666,12 +9841,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 78 */
+/* 87 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var Region = __webpack_require__(122)
+	var Region = __webpack_require__(116)
 
 	/**
 	 *
@@ -9708,14 +9883,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 79 */
+/* 88 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
-	var ALIGN_TO_NORMALIZED = __webpack_require__(121)
+	var ALIGN_TO_NORMALIZED = __webpack_require__(117)
 
-	var Region = __webpack_require__(122)
+	var Region = __webpack_require__(116)
 
 	/**
 	 * @localdoc Given source and target regions, and the given alignments required, returns a region that is the resulting allignment.
@@ -9789,97 +9964,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = COMPUTE_ALIGN_REGION
 
 /***/ },
-/* 80 */
-/***/ function(module, exports, __webpack_require__) {
-
-	exports.read = function(buffer, offset, isLE, mLen, nBytes) {
-	  var e, m,
-	      eLen = nBytes * 8 - mLen - 1,
-	      eMax = (1 << eLen) - 1,
-	      eBias = eMax >> 1,
-	      nBits = -7,
-	      i = isLE ? (nBytes - 1) : 0,
-	      d = isLE ? -1 : 1,
-	      s = buffer[offset + i];
-
-	  i += d;
-
-	  e = s & ((1 << (-nBits)) - 1);
-	  s >>= (-nBits);
-	  nBits += eLen;
-	  for (; nBits > 0; e = e * 256 + buffer[offset + i], i += d, nBits -= 8);
-
-	  m = e & ((1 << (-nBits)) - 1);
-	  e >>= (-nBits);
-	  nBits += mLen;
-	  for (; nBits > 0; m = m * 256 + buffer[offset + i], i += d, nBits -= 8);
-
-	  if (e === 0) {
-	    e = 1 - eBias;
-	  } else if (e === eMax) {
-	    return m ? NaN : ((s ? -1 : 1) * Infinity);
-	  } else {
-	    m = m + Math.pow(2, mLen);
-	    e = e - eBias;
-	  }
-	  return (s ? -1 : 1) * m * Math.pow(2, e - mLen);
-	};
-
-	exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
-	  var e, m, c,
-	      eLen = nBytes * 8 - mLen - 1,
-	      eMax = (1 << eLen) - 1,
-	      eBias = eMax >> 1,
-	      rt = (mLen === 23 ? Math.pow(2, -24) - Math.pow(2, -77) : 0),
-	      i = isLE ? 0 : (nBytes - 1),
-	      d = isLE ? 1 : -1,
-	      s = value < 0 || (value === 0 && 1 / value < 0) ? 1 : 0;
-
-	  value = Math.abs(value);
-
-	  if (isNaN(value) || value === Infinity) {
-	    m = isNaN(value) ? 1 : 0;
-	    e = eMax;
-	  } else {
-	    e = Math.floor(Math.log(value) / Math.LN2);
-	    if (value * (c = Math.pow(2, -e)) < 1) {
-	      e--;
-	      c *= 2;
-	    }
-	    if (e + eBias >= 1) {
-	      value += rt / c;
-	    } else {
-	      value += rt * Math.pow(2, 1 - eBias);
-	    }
-	    if (value * c >= 2) {
-	      e++;
-	      c /= 2;
-	    }
-
-	    if (e + eBias >= eMax) {
-	      m = 0;
-	      e = eMax;
-	    } else if (e + eBias >= 1) {
-	      m = (value * c - 1) * Math.pow(2, mLen);
-	      e = e + eBias;
-	    } else {
-	      m = value * Math.pow(2, eBias - 1) * Math.pow(2, mLen);
-	      e = 0;
-	    }
-	  }
-
-	  for (; mLen >= 8; buffer[offset + i] = m & 0xff, i += d, m /= 256, mLen -= 8);
-
-	  e = (e << mLen) | m;
-	  eLen += mLen;
-	  for (; eLen > 0; buffer[offset + i] = e & 0xff, i += d, e /= 256, eLen -= 8);
-
-	  buffer[offset + i - d] |= s * 128;
-	};
-
-
-/***/ },
-/* 81 */
+/* 89 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -9889,7 +9974,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 82 */
+/* 90 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -9899,31 +9984,31 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 83 */
+/* 91 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
-	var number = __webpack_require__(82)
+	var number = __webpack_require__(90)
 
 	module.exports = function(value){
 	    return number(value) && (value === parseInt(value, 10))
 	}
 
 /***/ },
-/* 84 */
+/* 92 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
-	var number = __webpack_require__(82)
+	var number = __webpack_require__(90)
 
 	module.exports = function(value){
 	    return number(value) && (value === parseFloat(value, 10)) && !(value === parseInt(value, 10))
 	}
 
 /***/ },
-/* 85 */
+/* 93 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -9933,7 +10018,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 86 */
+/* 94 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -9945,7 +10030,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 87 */
+/* 95 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -9957,7 +10042,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 88 */
+/* 96 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -9969,7 +10054,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 89 */
+/* 97 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -9979,7 +10064,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 90 */
+/* 98 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -9991,7 +10076,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 91 */
+/* 99 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -10003,7 +10088,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 92 */
+/* 100 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -10013,283 +10098,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 93 */
-/***/ function(module, exports, __webpack_require__) {
-
-	
-	/**
-	 * isArray
-	 */
-
-	var isArray = Array.isArray;
-
-	/**
-	 * toString
-	 */
-
-	var str = Object.prototype.toString;
-
-	/**
-	 * Whether or not the given `val`
-	 * is an array.
-	 *
-	 * example:
-	 *
-	 *        isArray([]);
-	 *        // > true
-	 *        isArray(arguments);
-	 *        // > false
-	 *        isArray('');
-	 *        // > false
-	 *
-	 * @param {mixed} val
-	 * @return {bool}
-	 */
-
-	module.exports = isArray || function (val) {
-	  return !! val && '[object Array]' == str.call(val);
-	};
-
-
-/***/ },
-/* 94 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict'
-
-	function curry(fn, n){
-
-	    if (typeof n !== 'number'){
-	        n = fn.length
-	    }
-
-	    function getCurryClosure(prevArgs){
-
-	        function curryClosure() {
-
-	            var len  = arguments.length
-	            var args = [].concat(prevArgs)
-
-	            if (len){
-	                args.push.apply(args, arguments)
-	            }
-
-	            if (args.length < n){
-	                return getCurryClosure(args)
-	            }
-
-	            return fn.apply(this, args)
-	        }
-
-	        return curryClosure
-	    }
-
-	    return getCurryClosure([])
-	}
-
-	module.exports = curry
-
-/***/ },
-/* 95 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict'
-
-	function composeTwo(f, g) {
-	    return function () {
-	        return f(g.apply(this, arguments))
-	    }
-	}
-
-	/*
-	 * @param {Function...} an enumeration of functions, each consuming the result of the following function.
-	 *
-	 * For example: compose(c, b, a)(1,4) == c(b(a(1,4)))
-	 *
-	 * @return the result of the first function in the enumeration
-	 */
-	module.exports = function(){
-
-	    var args = arguments
-	    var len  = args.length
-	    var i    = 0
-	    var f    = args[0]
-
-	    while (++i < len) {
-	        f = composeTwo(f, args[i])
-	    }
-
-	    return f
-	}
-
-/***/ },
-/* 96 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict'
-
-	function chain(where, fn, secondFn){
-
-	    return function(){
-	        if (where === 'before'){
-	            secondFn.apply(this, arguments)
-	        }
-
-	        var result = fn.apply(this, arguments)
-
-	        if (where !== 'before'){
-	            secondFn.apply(this, arguments)
-	        }
-
-	        return result
-	    }
-	}
-
-	module.exports = chain
-
-/***/ },
-/* 97 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use once'
-
-	function once(fn, scope){
-
-	    var called
-	    var result
-
-	    return function(){
-	        if (called){
-	            return result
-	        }
-
-	        called = true
-
-	        return result = fn.apply(scope || this, arguments)
-	    }
-	}
-
-	module.exports = once
-
-/***/ },
-/* 98 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict'
-
-	var SLICE = Array.prototype.slice
-
-	module.exports = function(fn, args){
-	    return function(){
-	        var thisArgs = SLICE.call(args || [])
-
-	        if (arguments.length){
-	            thisArgs.push.apply(thisArgs, arguments)
-	        }
-
-	        return fn.apply(this, thisArgs)
-	    }
-	}
-
-/***/ },
-/* 99 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict'
-
-	var SLICE = Array.prototype.slice
-	var bindArgsArray = __webpack_require__(98)
-
-	module.exports = function(fn){
-	    return bindArgsArray(fn, SLICE.call(arguments,1))
-	}
-
-/***/ },
-/* 100 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict'
-
-	var SLICE = Array.prototype.slice
-
-	module.exports = function(fn, args){
-
-	    return function(){
-	        if (!Array.isArray(args)){
-	            args = SLICE.call(args || [])
-	        }
-
-	        return fn.apply(this, args)
-	    }
-	}
-
-/***/ },
 /* 101 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict'
-
-	var SLICE = Array.prototype.slice
-	var lockArgsArray = __webpack_require__(100)
-
-	module.exports = function(fn){
-	    return lockArgsArray(fn, SLICE.call(arguments, 1))
-	}
+	module.exports = __webpack_require__(119)
 
 /***/ },
 /* 102 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict'
-
-	var curry = __webpack_require__(94)
-
-	module.exports = curry(function(fn, value){
-	    return value != undefined && typeof value.map?
-	            value.map(fn):
-	            fn(value)
-	})
-
-/***/ },
-/* 103 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict'
-
-	var curry = __webpack_require__(94)
-
-	module.exports = curry(function(prop, value){
-	    return value != undefined? value[prop]: undefined
-	})
-
-/***/ },
-/* 104 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict'
-
-	var SLICE = Array.prototype.slice
-	var curry = __webpack_require__(94)
-
-	module.exports = function(fn, count){
-	    return function(){
-	        return fn.apply(this, SLICE.call(arguments, 0, count))
-	    }
-	}
-
-/***/ },
-/* 105 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict'
-
-	var newify = __webpack_require__(136)
-	var curry  = __webpack_require__(94)
-
-	module.exports = curry(newify)
-
-/***/ },
-/* 106 */
 /***/ function(module, exports, __webpack_require__) {
 
 	    var setImmediate = function(fn){
@@ -10369,7 +10184,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	    var SLICE = Array.prototype.slice
 
-	    var curry = __webpack_require__(124),
+	    var curry = __webpack_require__(120),
 
 	        findFn = function(fn, target, onFound){
 	            // if (typeof target.find == 'function'){
@@ -10440,19 +10255,19 @@ return /******/ (function(modules) { // webpackBootstrap
 	         *
 	         * @return the result of the first function in the enumeration
 	         */
-	        compose = __webpack_require__(125),
+	        compose = __webpack_require__(121),
 
-	        chain = __webpack_require__(126),
+	        chain = __webpack_require__(122),
 
-	        once = __webpack_require__(127),
+	        once = __webpack_require__(123),
 
-	        bindArgsArray = __webpack_require__(128),
+	        bindArgsArray = __webpack_require__(124),
 
-	        bindArgs = __webpack_require__(129),
+	        bindArgs = __webpack_require__(125),
 
-	        lockArgsArray = __webpack_require__(130),
+	        lockArgsArray = __webpack_require__(126),
 
-	        lockArgs = __webpack_require__(131),
+	        lockArgs = __webpack_require__(127),
 
 	        skipArgs = function(fn, count){
 	            return function(){
@@ -10810,11 +10625,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	module.exports = {
 
-	    map: __webpack_require__(132),
+	    map: __webpack_require__(128),
 
-	    dot: __webpack_require__(133),
+	    dot: __webpack_require__(129),
 
-	    maxArgs: __webpack_require__(134),
+	    maxArgs: __webpack_require__(130),
 
 	    /**
 	     * @method compose
@@ -10933,17 +10748,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	    findIndex: findIndex,
 
-	    newify: __webpack_require__(135)
+	    newify: __webpack_require__(131)
 	}
 
 /***/ },
-/* 107 */
-/***/ function(module, exports, __webpack_require__) {
-
-	module.exports = __webpack_require__(123)
-
-/***/ },
-/* 108 */
+/* 103 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -11069,7 +10878,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 109 */
+/* 104 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -11107,7 +10916,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = curry
 
 /***/ },
-/* 110 */
+/* 105 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -11140,7 +10949,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 111 */
+/* 106 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -11165,7 +10974,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = chain
 
 /***/ },
-/* 112 */
+/* 107 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use once'
@@ -11189,7 +10998,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = once
 
 /***/ },
-/* 113 */
+/* 108 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -11209,20 +11018,20 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 114 */
+/* 109 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
 	var SLICE = Array.prototype.slice
-	var bindArgsArray = __webpack_require__(113)
+	var bindArgsArray = __webpack_require__(108)
 
 	module.exports = function(fn){
 	    return bindArgsArray(fn, SLICE.call(arguments,1))
 	}
 
 /***/ },
-/* 115 */
+/* 110 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -11241,25 +11050,25 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 116 */
+/* 111 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
 	var SLICE = Array.prototype.slice
-	var lockArgsArray = __webpack_require__(115)
+	var lockArgsArray = __webpack_require__(110)
 
 	module.exports = function(fn){
 	    return lockArgsArray(fn, SLICE.call(arguments, 1))
 	}
 
 /***/ },
-/* 117 */
+/* 112 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
-	var curry = __webpack_require__(109)
+	var curry = __webpack_require__(104)
 
 	module.exports = curry(function(fn, value){
 	    return value != undefined && typeof value.map?
@@ -11268,25 +11077,25 @@ return /******/ (function(modules) { // webpackBootstrap
 	})
 
 /***/ },
-/* 118 */
+/* 113 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
-	var curry = __webpack_require__(109)
+	var curry = __webpack_require__(104)
 
 	module.exports = curry(function(prop, value){
 	    return value != undefined? value[prop]: undefined
 	})
 
 /***/ },
-/* 119 */
+/* 114 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
 	var SLICE = Array.prototype.slice
-	var curry = __webpack_require__(109)
+	var curry = __webpack_require__(104)
 
 	module.exports = function(fn, count){
 	    return function(){
@@ -11295,23 +11104,29 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 120 */
+/* 115 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
-	var newify = __webpack_require__(138)
-	var curry  = __webpack_require__(109)
+	var newify = __webpack_require__(132)
+	var curry  = __webpack_require__(104)
 
 	module.exports = curry(newify)
 
 /***/ },
-/* 121 */
+/* 116 */
+/***/ function(module, exports, __webpack_require__) {
+
+	module.exports = __webpack_require__(133)
+
+/***/ },
+/* 117 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
-	var Region = __webpack_require__(122)
+	var Region = __webpack_require__(116)
 
 	/**
 	 *
@@ -11488,34 +11303,38 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = ALIGN_TO_NORMALIZED
 
 /***/ },
-/* 122 */
+/* 118 */
 /***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __webpack_require__(139)
+	var getInstantiatorFunction = __webpack_require__(134)
+
+	module.exports = function(fn, args){
+		return getInstantiatorFunction(args.length)(fn, args)
+	}
 
 /***/ },
-/* 123 */
+/* 119 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
 	module.exports = {
-	    'numeric'  : __webpack_require__(140),
-	    'number'   : __webpack_require__(141),
-	    'int'      : __webpack_require__(142),
-	    'float'    : __webpack_require__(143),
-	    'string'   : __webpack_require__(144),
-	    'function' : __webpack_require__(145),
-	    'object'   : __webpack_require__(146),
-	    'arguments': __webpack_require__(147),
-	    'boolean'  : __webpack_require__(148),
-	    'date'     : __webpack_require__(149),
-	    'regexp'   : __webpack_require__(150),
-	    'array'    : __webpack_require__(151)
+	    'numeric'  : __webpack_require__(135),
+	    'number'   : __webpack_require__(136),
+	    'int'      : __webpack_require__(137),
+	    'float'    : __webpack_require__(138),
+	    'string'   : __webpack_require__(139),
+	    'function' : __webpack_require__(140),
+	    'object'   : __webpack_require__(141),
+	    'arguments': __webpack_require__(142),
+	    'boolean'  : __webpack_require__(143),
+	    'date'     : __webpack_require__(144),
+	    'regexp'   : __webpack_require__(145),
+	    'array'    : __webpack_require__(146)
 	}
 
 /***/ },
-/* 124 */
+/* 120 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -11553,7 +11372,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = curry
 
 /***/ },
-/* 125 */
+/* 121 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -11586,7 +11405,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 126 */
+/* 122 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -11611,7 +11430,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = chain
 
 /***/ },
-/* 127 */
+/* 123 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use once'
@@ -11635,7 +11454,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = once
 
 /***/ },
-/* 128 */
+/* 124 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -11655,20 +11474,20 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 129 */
+/* 125 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
 	var SLICE = Array.prototype.slice
-	var bindArgsArray = __webpack_require__(128)
+	var bindArgsArray = __webpack_require__(124)
 
 	module.exports = function(fn){
 	    return bindArgsArray(fn, SLICE.call(arguments,1))
 	}
 
 /***/ },
-/* 130 */
+/* 126 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -11687,25 +11506,25 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 131 */
+/* 127 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
 	var SLICE = Array.prototype.slice
-	var lockArgsArray = __webpack_require__(130)
+	var lockArgsArray = __webpack_require__(126)
 
 	module.exports = function(fn){
 	    return lockArgsArray(fn, SLICE.call(arguments, 1))
 	}
 
 /***/ },
-/* 132 */
+/* 128 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
-	var curry = __webpack_require__(124)
+	var curry = __webpack_require__(120)
 
 	module.exports = curry(function(fn, value){
 	    return value != undefined && typeof value.map?
@@ -11714,25 +11533,25 @@ return /******/ (function(modules) { // webpackBootstrap
 	})
 
 /***/ },
-/* 133 */
+/* 129 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
-	var curry = __webpack_require__(124)
+	var curry = __webpack_require__(120)
 
 	module.exports = curry(function(prop, value){
 	    return value != undefined? value[prop]: undefined
 	})
 
 /***/ },
-/* 134 */
+/* 130 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
 	var SLICE = Array.prototype.slice
-	var curry = __webpack_require__(124)
+	var curry = __webpack_require__(120)
 
 	module.exports = function(fn, count){
 	    return function(){
@@ -11741,58 +11560,41 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 135 */
+/* 131 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
-	var newify = __webpack_require__(156)
-	var curry  = __webpack_require__(124)
+	var newify = __webpack_require__(151)
+	var curry  = __webpack_require__(120)
 
 	module.exports = curry(newify)
 
 /***/ },
-/* 136 */
+/* 132 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var getInstantiatorFunction = __webpack_require__(154)
+	var getInstantiatorFunction = __webpack_require__(147)
 
 	module.exports = function(fn, args){
 		return getInstantiatorFunction(args.length)(fn, args)
 	}
 
 /***/ },
-/* 137 */
-/***/ function(module, exports, __webpack_require__) {
-
-	exports = module.exports = __webpack_require__(152)();
-	exports.push([module.id, "/*! normalize.css v3.0.2 | MIT License | git.io/normalize */\n\n/**\n * 1. Set default font family to sans-serif.\n * 2. Prevent iOS text size adjust after orientation change, without disabling\n *    user zoom.\n */\n\nhtml {\n  font-family: sans-serif; /* 1 */\n  -ms-text-size-adjust: 100%; /* 2 */\n  -webkit-text-size-adjust: 100%; /* 2 */\n}\n\n/**\n * Remove default margin.\n */\n\nbody {\n  margin: 0;\n}\n\n/* HTML5 display definitions\n   ========================================================================== */\n\n/**\n * Correct `block` display not defined for any HTML5 element in IE 8/9.\n * Correct `block` display not defined for `details` or `summary` in IE 10/11\n * and Firefox.\n * Correct `block` display not defined for `main` in IE 11.\n */\n\narticle,\naside,\ndetails,\nfigcaption,\nfigure,\nfooter,\nheader,\nhgroup,\nmain,\nmenu,\nnav,\nsection,\nsummary {\n  display: block;\n}\n\n/**\n * 1. Correct `inline-block` display not defined in IE 8/9.\n * 2. Normalize vertical alignment of `progress` in Chrome, Firefox, and Opera.\n */\n\naudio,\ncanvas,\nprogress,\nvideo {\n  display: inline-block; /* 1 */\n  vertical-align: baseline; /* 2 */\n}\n\n/**\n * Prevent modern browsers from displaying `audio` without controls.\n * Remove excess height in iOS 5 devices.\n */\n\naudio:not([controls]) {\n  display: none;\n  height: 0;\n}\n\n/**\n * Address `[hidden]` styling not present in IE 8/9/10.\n * Hide the `template` element in IE 8/9/11, Safari, and Firefox < 22.\n */\n\n[hidden],\ntemplate {\n  display: none;\n}\n\n/* Links\n   ========================================================================== */\n\n/**\n * Remove the gray background color from active links in IE 10.\n */\n\na {\n  background-color: transparent;\n}\n\n/**\n * Improve readability when focused and also mouse hovered in all browsers.\n */\n\na:active,\na:hover {\n  outline: 0;\n}\n\n/* Text-level semantics\n   ========================================================================== */\n\n/**\n * Address styling not present in IE 8/9/10/11, Safari, and Chrome.\n */\n\nabbr[title] {\n  border-bottom: 1px dotted;\n}\n\n/**\n * Address style set to `bolder` in Firefox 4+, Safari, and Chrome.\n */\n\nb,\nstrong {\n  font-weight: bold;\n}\n\n/**\n * Address styling not present in Safari and Chrome.\n */\n\ndfn {\n  font-style: italic;\n}\n\n/**\n * Address variable `h1` font-size and margin within `section` and `article`\n * contexts in Firefox 4+, Safari, and Chrome.\n */\n\nh1 {\n  font-size: 2em;\n  margin: 0.67em 0;\n}\n\n/**\n * Address styling not present in IE 8/9.\n */\n\nmark {\n  background: #ff0;\n  color: #000;\n}\n\n/**\n * Address inconsistent and variable font size in all browsers.\n */\n\nsmall {\n  font-size: 80%;\n}\n\n/**\n * Prevent `sub` and `sup` affecting `line-height` in all browsers.\n */\n\nsub,\nsup {\n  font-size: 75%;\n  line-height: 0;\n  position: relative;\n  vertical-align: baseline;\n}\n\nsup {\n  top: -0.5em;\n}\n\nsub {\n  bottom: -0.25em;\n}\n\n/* Embedded content\n   ========================================================================== */\n\n/**\n * Remove border when inside `a` element in IE 8/9/10.\n */\n\nimg {\n  border: 0;\n}\n\n/**\n * Correct overflow not hidden in IE 9/10/11.\n */\n\nsvg:not(:root) {\n  overflow: hidden;\n}\n\n/* Grouping content\n   ========================================================================== */\n\n/**\n * Address margin not present in IE 8/9 and Safari.\n */\n\nfigure {\n  margin: 1em 40px;\n}\n\n/**\n * Address differences between Firefox and other browsers.\n */\n\nhr {\n  -moz-box-sizing: content-box;\n  box-sizing: content-box;\n  height: 0;\n}\n\n/**\n * Contain overflow in all browsers.\n */\n\npre {\n  overflow: auto;\n}\n\n/**\n * Address odd `em`-unit font size rendering in all browsers.\n */\n\ncode,\nkbd,\npre,\nsamp {\n  font-family: monospace, monospace;\n  font-size: 1em;\n}\n\n/* Forms\n   ========================================================================== */\n\n/**\n * Known limitation: by default, Chrome and Safari on OS X allow very limited\n * styling of `select`, unless a `border` property is set.\n */\n\n/**\n * 1. Correct color not being inherited.\n *    Known issue: affects color of disabled elements.\n * 2. Correct font properties not being inherited.\n * 3. Address margins set differently in Firefox 4+, Safari, and Chrome.\n */\n\nbutton,\ninput,\noptgroup,\nselect,\ntextarea {\n  color: inherit; /* 1 */\n  font: inherit; /* 2 */\n  margin: 0; /* 3 */\n}\n\n/**\n * Address `overflow` set to `hidden` in IE 8/9/10/11.\n */\n\nbutton {\n  overflow: visible;\n}\n\n/**\n * Address inconsistent `text-transform` inheritance for `button` and `select`.\n * All other form control elements do not inherit `text-transform` values.\n * Correct `button` style inheritance in Firefox, IE 8/9/10/11, and Opera.\n * Correct `select` style inheritance in Firefox.\n */\n\nbutton,\nselect {\n  text-transform: none;\n}\n\n/**\n * 1. Avoid the WebKit bug in Android 4.0.* where (2) destroys native `audio`\n *    and `video` controls.\n * 2. Correct inability to style clickable `input` types in iOS.\n * 3. Improve usability and consistency of cursor style between image-type\n *    `input` and others.\n */\n\nbutton,\nhtml input[type=\"button\"], /* 1 */\ninput[type=\"reset\"],\ninput[type=\"submit\"] {\n  -webkit-appearance: button; /* 2 */\n  cursor: pointer; /* 3 */\n}\n\n/**\n * Re-set default cursor for disabled elements.\n */\n\nbutton[disabled],\nhtml input[disabled] {\n  cursor: default;\n}\n\n/**\n * Remove inner padding and border in Firefox 4+.\n */\n\nbutton::-moz-focus-inner,\ninput::-moz-focus-inner {\n  border: 0;\n  padding: 0;\n}\n\n/**\n * Address Firefox 4+ setting `line-height` on `input` using `!important` in\n * the UA stylesheet.\n */\n\ninput {\n  line-height: normal;\n}\n\n/**\n * It's recommended that you don't attempt to style these elements.\n * Firefox's implementation doesn't respect box-sizing, padding, or width.\n *\n * 1. Address box sizing set to `content-box` in IE 8/9/10.\n * 2. Remove excess padding in IE 8/9/10.\n */\n\ninput[type=\"checkbox\"],\ninput[type=\"radio\"] {\n  box-sizing: border-box; /* 1 */\n  padding: 0; /* 2 */\n}\n\n/**\n * Fix the cursor style for Chrome's increment/decrement buttons. For certain\n * `font-size` values of the `input`, it causes the cursor style of the\n * decrement button to change from `default` to `text`.\n */\n\ninput[type=\"number\"]::-webkit-inner-spin-button,\ninput[type=\"number\"]::-webkit-outer-spin-button {\n  height: auto;\n}\n\n/**\n * 1. Address `appearance` set to `searchfield` in Safari and Chrome.\n * 2. Address `box-sizing` set to `border-box` in Safari and Chrome\n *    (include `-moz` to future-proof).\n */\n\ninput[type=\"search\"] {\n  -webkit-appearance: textfield; /* 1 */\n  -moz-box-sizing: content-box;\n  -webkit-box-sizing: content-box; /* 2 */\n  box-sizing: content-box;\n}\n\n/**\n * Remove inner padding and search cancel button in Safari and Chrome on OS X.\n * Safari (but not Chrome) clips the cancel button when the search input has\n * padding (and `textfield` appearance).\n */\n\ninput[type=\"search\"]::-webkit-search-cancel-button,\ninput[type=\"search\"]::-webkit-search-decoration {\n  -webkit-appearance: none;\n}\n\n/**\n * Define consistent border, margin, and padding.\n */\n\nfieldset {\n  border: 1px solid #c0c0c0;\n  margin: 0 2px;\n  padding: 0.35em 0.625em 0.75em;\n}\n\n/**\n * 1. Correct `color` not being inherited in IE 8/9/10/11.\n * 2. Remove padding so people aren't caught out if they zero out fieldsets.\n */\n\nlegend {\n  border: 0; /* 1 */\n  padding: 0; /* 2 */\n}\n\n/**\n * Remove default vertical scrollbar in IE 8/9/10/11.\n */\n\ntextarea {\n  overflow: auto;\n}\n\n/**\n * Don't inherit the `font-weight` (applied by a rule above).\n * NOTE: the default cannot safely be changed in Chrome and Safari on OS X.\n */\n\noptgroup {\n  font-weight: bold;\n}\n\n/* Tables\n   ========================================================================== */\n\n/**\n * Remove most spacing between table cells.\n */\n\ntable {\n  border-collapse: collapse;\n  border-spacing: 0;\n}\n\ntd,\nth {\n  padding: 0;\n}\n", ""]);
-
-/***/ },
-/* 138 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var getInstantiatorFunction = __webpack_require__(155)
-
-	module.exports = function(fn, args){
-		return getInstantiatorFunction(args.length)(fn, args)
-	}
-
-/***/ },
-/* 139 */
+/* 133 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var hasOwn    = __webpack_require__(163)
-	var newify    = __webpack_require__(160)
-	var copyUtils = __webpack_require__(57)
+	var hasOwn    = __webpack_require__(153)
+	var newify    = __webpack_require__(152)
+	var copyUtils = __webpack_require__(51)
 	var copyList  = copyUtils.copyList
 	var copy      = copyUtils.copy
-	var isObject  = __webpack_require__(162).object
-	var EventEmitter = __webpack_require__(52).EventEmitter
-	var inherits = __webpack_require__(157)
-	var VALIDATE = __webpack_require__(158)
+	var isObject  = __webpack_require__(154).object
+	var EventEmitter = __webpack_require__(53).EventEmitter
+	var inherits = __webpack_require__(148)
+	var VALIDATE = __webpack_require__(149)
 
 	/**
 	 * @class Region
@@ -12813,12 +12615,45 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 	})
 
-	__webpack_require__(159)(REGION)
+	__webpack_require__(150)(REGION)
 
 	module.exports = REGION
 
 /***/ },
-/* 140 */
+/* 134 */
+/***/ function(module, exports, __webpack_require__) {
+
+	module.exports = function(){
+
+	    'use strict';
+
+	    var fns = {}
+
+	    return function(len){
+
+	        if ( ! fns [len ] ) {
+
+	            var args = []
+	            var i    = 0
+
+	            for (; i < len; i++ ) {
+	                args.push( 'a[' + i + ']')
+	            }
+
+	            fns[len] = new Function(
+	                            'c',
+	                            'a',
+	                            'return new c(' + args.join(',') + ')'
+	                        )
+	        }
+
+	        return fns[len]
+	    }
+
+	}()
+
+/***/ },
+/* 135 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -12828,7 +12663,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 141 */
+/* 136 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -12838,31 +12673,31 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 142 */
+/* 137 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
-	var number = __webpack_require__(141)
+	var number = __webpack_require__(136)
 
 	module.exports = function(value){
 	    return number(value) && (value === parseInt(value, 10))
 	}
 
 /***/ },
-/* 143 */
+/* 138 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
-	var number = __webpack_require__(141)
+	var number = __webpack_require__(136)
 
 	module.exports = function(value){
 	    return number(value) && (value === parseFloat(value, 10)) && !(value === parseInt(value, 10))
 	}
 
 /***/ },
-/* 144 */
+/* 139 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -12872,7 +12707,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 145 */
+/* 140 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -12884,7 +12719,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 146 */
+/* 141 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -12896,7 +12731,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 147 */
+/* 142 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -12908,7 +12743,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 148 */
+/* 143 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -12918,7 +12753,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 149 */
+/* 144 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -12930,7 +12765,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 150 */
+/* 145 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -12942,7 +12777,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 151 */
+/* 146 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -12952,44 +12787,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 152 */
-/***/ function(module, exports, __webpack_require__) {
-
-	module.exports = function() {
-		var list = [];
-		list.toString = function toString() {
-			var result = [];
-			for(var i = 0; i < this.length; i++) {
-				var item = this[i];
-				if(item[2]) {
-					result.push("@media " + item[2] + "{" + item[1] + "}");
-				} else {
-					result.push(item[1]);
-				}
-			}
-			return result.join("");
-		};
-		return list;
-	}
-
-/***/ },
-/* 153 */
-/***/ function(module, exports, __webpack_require__) {
-
-	module.exports = function(list, importedList, media) {
-		for(var i = 0; i < importedList.length; i++) {
-			var item = importedList[i];
-			if(media && !item[2])
-				item[2] = media;
-			else if(media) {
-				item[2] = "(" + item[2] + ") and (" + media + ")";
-			}
-			list.push(item);
-		}
-	};
-
-/***/ },
-/* 154 */
+/* 147 */
 /***/ function(module, exports, __webpack_require__) {
 
 	module.exports = function(){
@@ -13022,50 +12820,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}()
 
 /***/ },
-/* 155 */
-/***/ function(module, exports, __webpack_require__) {
-
-	module.exports = function(){
-
-	    'use strict';
-
-	    var fns = {}
-
-	    return function(len){
-
-	        if ( ! fns [len ] ) {
-
-	            var args = []
-	            var i    = 0
-
-	            for (; i < len; i++ ) {
-	                args.push( 'a[' + i + ']')
-	            }
-
-	            fns[len] = new Function(
-	                            'c',
-	                            'a',
-	                            'return new c(' + args.join(',') + ')'
-	                        )
-	        }
-
-	        return fns[len]
-	    }
-
-	}()
-
-/***/ },
-/* 156 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var getInstantiatorFunction = __webpack_require__(161)
-
-	module.exports = function(fn, args){
-		return getInstantiatorFunction(args.length)(fn, args)
-	}
-
-/***/ },
-/* 157 */
+/* 148 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -13083,7 +12838,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 158 */
+/* 149 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -13115,13 +12870,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 159 */
+/* 150 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var hasOwn   = __webpack_require__(163)
-	var VALIDATE = __webpack_require__(158)
+	var hasOwn   = __webpack_require__(153)
+	var VALIDATE = __webpack_require__(149)
 
 	module.exports = function(REGION){
 
@@ -13334,56 +13089,27 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 160 */
+/* 151 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var getInstantiatorFunction = __webpack_require__(164)
+	var getInstantiatorFunction = __webpack_require__(155)
 
 	module.exports = function(fn, args){
 		return getInstantiatorFunction(args.length)(fn, args)
 	}
 
 /***/ },
-/* 161 */
+/* 152 */
 /***/ function(module, exports, __webpack_require__) {
 
-	module.exports = function(){
+	var getInstantiatorFunction = __webpack_require__(156)
 
-	    'use strict';
-
-	    var fns = {}
-
-	    return function(len){
-
-	        if ( ! fns [len ] ) {
-
-	            var args = []
-	            var i    = 0
-
-	            for (; i < len; i++ ) {
-	                args.push( 'a[' + i + ']')
-	            }
-
-	            fns[len] = new Function(
-	                            'c',
-	                            'a',
-	                            'return new c(' + args.join(',') + ')'
-	                        )
-	        }
-
-	        return fns[len]
-	    }
-
-	}()
+	module.exports = function(fn, args){
+		return getInstantiatorFunction(args.length)(fn, args)
+	}
 
 /***/ },
-/* 162 */
-/***/ function(module, exports, __webpack_require__) {
-
-	module.exports = __webpack_require__(165)
-
-/***/ },
-/* 163 */
+/* 153 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -13426,7 +13152,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	})
 
 /***/ },
-/* 164 */
+/* 154 */
+/***/ function(module, exports, __webpack_require__) {
+
+	module.exports = __webpack_require__(157)
+
+/***/ },
+/* 155 */
 /***/ function(module, exports, __webpack_require__) {
 
 	module.exports = function(){
@@ -13459,28 +13191,61 @@ return /******/ (function(modules) { // webpackBootstrap
 	}()
 
 /***/ },
-/* 165 */
+/* 156 */
+/***/ function(module, exports, __webpack_require__) {
+
+	module.exports = function(){
+
+	    'use strict';
+
+	    var fns = {}
+
+	    return function(len){
+
+	        if ( ! fns [len ] ) {
+
+	            var args = []
+	            var i    = 0
+
+	            for (; i < len; i++ ) {
+	                args.push( 'a[' + i + ']')
+	            }
+
+	            fns[len] = new Function(
+	                            'c',
+	                            'a',
+	                            'return new c(' + args.join(',') + ')'
+	                        )
+	        }
+
+	        return fns[len]
+	    }
+
+	}()
+
+/***/ },
+/* 157 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
 	module.exports = {
-	    'numeric'  : __webpack_require__(166),
-	    'number'   : __webpack_require__(167),
-	    'int'      : __webpack_require__(168),
-	    'float'    : __webpack_require__(169),
-	    'string'   : __webpack_require__(170),
-	    'function' : __webpack_require__(171),
-	    'object'   : __webpack_require__(172),
-	    'arguments': __webpack_require__(173),
-	    'boolean'  : __webpack_require__(174),
-	    'date'     : __webpack_require__(175),
-	    'regexp'   : __webpack_require__(176),
-	    'array'    : __webpack_require__(177)
+	    'numeric'  : __webpack_require__(158),
+	    'number'   : __webpack_require__(159),
+	    'int'      : __webpack_require__(160),
+	    'float'    : __webpack_require__(161),
+	    'string'   : __webpack_require__(162),
+	    'function' : __webpack_require__(163),
+	    'object'   : __webpack_require__(164),
+	    'arguments': __webpack_require__(165),
+	    'boolean'  : __webpack_require__(166),
+	    'date'     : __webpack_require__(167),
+	    'regexp'   : __webpack_require__(168),
+	    'array'    : __webpack_require__(169)
 	}
 
 /***/ },
-/* 166 */
+/* 158 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -13490,7 +13255,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 167 */
+/* 159 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -13500,31 +13265,31 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 168 */
+/* 160 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
-	var number = __webpack_require__(167)
+	var number = __webpack_require__(159)
 
 	module.exports = function(value){
 	    return number(value) && (value === parseInt(value, 10))
 	}
 
 /***/ },
-/* 169 */
+/* 161 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
 
-	var number = __webpack_require__(167)
+	var number = __webpack_require__(159)
 
 	module.exports = function(value){
 	    return number(value) && (value === parseFloat(value, 10)) && !(value === parseInt(value, 10))
 	}
 
 /***/ },
-/* 170 */
+/* 162 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -13534,7 +13299,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 171 */
+/* 163 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -13546,7 +13311,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 172 */
+/* 164 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -13558,7 +13323,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 173 */
+/* 165 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -13570,7 +13335,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 174 */
+/* 166 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -13580,7 +13345,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 175 */
+/* 167 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -13592,7 +13357,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 176 */
+/* 168 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'
@@ -13604,7 +13369,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 177 */
+/* 169 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict'

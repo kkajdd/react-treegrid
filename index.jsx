@@ -1,7 +1,6 @@
 'use strict';
 
 require('./index.styl')
-require('react-datagrid/style/index.styl')
 
 var sorty = require('sorty')
 var React = require('react')
@@ -10,14 +9,19 @@ var DataGrid = require('./src')
 var columns = [
     {
         name: 'id',
-        width: 200,
+        defaultWidth: 200,
+        defaultVisible: true,
+        filterable: false,
         render: function(value){
 
             return <span><input type="checkbox" />{value}</span>
         }
     },
     {
-        name: 'text'
+        name: 'text',
+        filterable: false,
+        defaultVisible: true,
+        defaultWidth: 300
     }
 ]
 
@@ -25,42 +29,16 @@ var data = require('./data')
 
 var App = React.createClass({
 
-    handleChange: function(event){
-        ROW_HEIGHT = event.target.value
-        this.setState({})
-    },
-
-    handleDataLenChange: function(event){
-        LEN = event.target.value
-        this.setState({})
-    },
-
     handleSortChange: function(sortInfo){
         // console.log(sortInfo)
         // SORT_INFO = sortInfo
         // this.setState({})
     },
 
-    onColumnChange: function(column, visible){
-        column.hidden = !visible
-
-        this.setState({})
-    },
-
     onColumnOrderChange: function(index, dropIndex){
         var first = columns[index]
         columns[index] = columns[dropIndex]
         columns[dropIndex] = first
-
-        this.setState({})
-    },
-
-    onColumnResize: function(firstCol, firstSize, secondCol, secondSize){
-        firstCol.width = firstSize
-
-        if (secondCol){
-            secondCol.width = secondSize
-        }
 
         this.setState({})
     },
@@ -83,12 +61,19 @@ var App = React.createClass({
             this.setState({})
         }.bind(this)
 
+        function row(props){
+            props.onClick = function(){
+                console.log('row click', props.index, props.data)
+            }
+
+            props.onContextMenu = function(event){
+            }
+        }
+
         return <div >
             <DataGrid
                 indexParents={false}
-                onColumnVisibilityChange={this.onColumnChange}
                 onColumnOrderChange={this.onColumnOrderChange}
-                onColumnResize={this.onColumnResize}
                 rowStyle={rowStyle}
                 onSortChange={this.handleSortChange}
                 idProperty='id'
@@ -96,6 +81,7 @@ var App = React.createClass({
                 data={data}
                 columns={columns}
                 onCollapseChange={onCollapseChange}
+                rowFactory={row}
             />
         </div>
 
