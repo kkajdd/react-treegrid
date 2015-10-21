@@ -30,7 +30,8 @@
     "object-assign": "^2.0.0",
     "react": "^0.12.1",
     "react-datagrid": "^0.1.1",
-    "react-prefixr": "0.0.3"
+    "react-prefixr": "0.0.3",
+    "react-style-normalizer": "^1.0.2"
   },
   "repository": {
     "type": "git",

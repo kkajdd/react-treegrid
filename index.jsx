@@ -70,8 +70,19 @@ var App = React.createClass({
             }
         }
 
+        function rowContextMenu(props){
+            props.items = [
+                {
+                    label: <span>great<b>news</b></span>
+                }
+            ]
+        }
+
         return <div >
             <DataGrid
+
+                rowContextMenu={rowContextMenu}
+                className='aaa'
                 indexParents={false}
                 onColumnOrderChange={this.onColumnOrderChange}
                 rowStyle={rowStyle}

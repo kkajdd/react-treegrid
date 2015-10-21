@@ -1,7 +1,7 @@
 'use strict';
 
-var prefixer = require('react-prefixr')
-var assign   = require('object-assign')
+var assign    = require('object-assign')
+var normalize = require('react-style-normalizer')
 
 /**
  * This function renders the expand tool for the given data object
@@ -41,10 +41,10 @@ module.exports = function(data, props) {
     var collapsedStyle
 
     if (collapsed){
-        collapsedStyle = prefixer({
+        collapsedStyle = {
             transform: 'rotate(-90deg)',
             display  : 'inline-block'
-        })
+        }
     }
 
     var onClick = this.handleExpandToolClick.bind(this, collapsed, data)
@@ -52,7 +52,7 @@ module.exports = function(data, props) {
 
     var expandToolProps = {
         key      : 'expandTool',
-        style    : style,
+        style    : normalize(style),
         onClick  : onClick,
         collapsed: collapsed,
         children : '▾'
